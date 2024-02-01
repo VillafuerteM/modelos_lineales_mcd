@@ -1,0 +1,82 @@
+---
+title: "Tarea 2 - MLG"
+format: pdf
+editor: visual
+---
+
+```{r librerias, include=FALSE}
+library(dplyr)
+library(gt)
+```
+
+### 5. Robustez Bayesiana 
+
+Supongan que están a punto de lanzar una moneda que creen que es honesta. Si p denota la probabilidad de obtener sol, entonces su mejor creencia es que p = 0.5 Adicionalmente, creen que es altamente probable que la moneda sea cercana a honesta, lo que cuantifican como $P(0.44 ≤ p ≤ 0.56) = 0.9$. Consideren las siguientes dos iniciales para p:
+
+$$
+P1 p ∼ beta(100, 100)
+$$
+
+$$
+P2 p ∼ 0.9beta(500, 500) + 0.1beta(1, 1)
+$$
+
+-   Simular 1000 valores de cada densidad inicial P1 y P2. Resumiendo las muestras simuladas, mostrar que ambas iniciales concuerdan con las creencias iniciales acerca de la probabilidad p del lanzamiento de moneda.
+
+```{r}
+set.seed(123)
+
+p1 <- data.frame(valor=rbeta(1000, 
+                             shape1 = 100, 
+                             shape2 = 100))
+
+
+p2 <- data.frame(valor= 0.9*rbeta(1000, shape1 = 500, shape2 = 500) +
+                   0.1*rbeta(1000, shape1 = 1, shape2 = 1),
+                 type='p2')
+```
+
+```{r echo=FALSE}
+p1 %>% summarise(mean_p1=mean(valor),
+                 desv_est=sd(valor),
+                 var=var(valor)) %>%
+  gt() %>%
+  tab_header(
+    title = "Estadísticas de P1",
+    subtitle = "Beta (100,100)") %>%
+  fmt_number(decimals = 4)
+```
+
+Supongan que lanzan la moneda 100 veces y obtienen 45 soles. Simular 1000 valores de las distribuciones posteriores P1 y P2, y calcular intervalos de probabilidad del 90 %.
+
+La posterior de P1 sería una $beta\sim(100+45,100+55)$
+
+```{r}
+p1_post <- data.frame(valor=rbeta(1000, 
+                             shape1 = 100+45, 
+                             shape2 = 100+55),
+                 type='p1')
+
+quantile(p1_post$valor, probs = c(0.05, 0.95))
+```
+
+-    Supongan que sólo observan 30 soles de los 100 lanzamientos. Nuevamente simular 1000 valores de las dos posteriores y calcular intervalos de probabilidad del 90 %.
+
+```{r}
+p1_post <- data.frame(valor=rbeta(1000, 
+                             shape1 = 100+30, 
+                             shape2 = 100+30),
+                 type='p1')
+
+quantile(p1_post$valor, probs = c(0.05, 0.95))
+```
+
+-   Viendo los resultados de (b) y (c), comentar sobre la robustez de la inferencia con respecto a la elección de la densidad inicial en cada caso.
+
+6\. Aprendiendo de datos agrupados. Supongan que manejan en carretera y típicamente manejan a una velocidad constante de 70km/h. Un día, rebasan un carro y son rebasados por 17 carros. Supongan que las velocidades son distribuídas N (µ, 100). Si rebasan s carros y son rebasados por f,
+
+a.  ¿Cuál es la verosimilitud de µ?
+
+b.  Asignando una densidad inicial plana para µ, si s = 1 y f = 17, graficar la densidad posterior de µ.
+
+c.  Usando la densidad encontrada en (a), encontrar la media posterior de µ.
