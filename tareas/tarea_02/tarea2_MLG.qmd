@@ -2,53 +2,148 @@
 title: "Tarea 2 - MLG"
 format: pdf
 editor: visual
+authors: 
+  - "Blanca Garcia - ######"
+  - "Yuneri Perez - ######"
+  - "Thomas Rudolf - ######"
+  - "Mariano Villafuerte - 156057"
 ---
 
 ```{r librerias, include=FALSE}
-library(dplyr)
+library(tidyverse)
 library(gt)
 ```
 
-### 1. Estimando una media Poisson usando una inicial discreta 
+### 1. Estimando una media Poisson usando una inicial discreta
 
-Supongan que son dueños de una compañía de transporte con una flota grande de camiones. Las descomposturas ocurren aleatoriamente en el tiempo y supóngase que el número de descomposturas durante un intervalo de t días sigue un distribución Poisson con media $\lambda t$. El parámetro $\lambda$ es la tasa de descompostura diaria. Los posibles valores para λ son 0.5, 1, 1.5, 2,2.5 y 3, con respectivas probabilidades 0.1, 0.2, 0.3, 0.2, 0.15 y 0.05. Si uno observa y descomposturas, entonces la probabilidad posterior de λ es proporcional a g(λ) exp(−tλ)(tλ)y , donde g es la distribución inicial.
+Supongan que son dueños de una compañía de transporte con una flota grande de camiones. Las descomposturas ocurren aleatoriamente en el tiempo y supóngase que el número de descomposturas durante un intervalo de t días sigue un distribución Poisson con media $\lambda t$. El parámetro $\lambda$ es la tasa de descompostura diaria. Los posibles valores para $\lambda$ son $0.5$, $1$, $1.5$, $2$, $2.5$ y $3$, con respectivas probabilidades $0.1$, $0.2$, $0.3$, $0.2$, $0.15$ y $0.05$. Si uno observa $y$ descomposturas, entonces la probabilidad posterior de $λ$ es proporcional a $g(λ) exp(−tλ)(tλ)^y$ , donde g es la distribución inicial.
 
 a.  Si 12 camiones se descomponen en un periodo de 6 días, encontrar la probabilidad posterior para las diferentes tasas.
 
+```{r}
+# los datos que vemos en la pregunta
+y <- 12
+t <- 6
+
+# distribución inicial
+dist_ini <- data.frame(
+  val_lam = c(0.5,1,1.5,2,2.5,3),
+  prob_lam=c(0.1,0.2,0.3,0.2,0.15,0.05))
+
+# calculo de posterior
+dist_post <- dist_ini %>% 
+  mutate(post=(prob_lam)*exp(-val_lam*t)*((t*val_lam)^y),
+         dist_post=post/sum(post))
+```
+
+```{r echo=FALSE}
+dist_post %>% 
+  select(val_lam, dist_post) %>%
+  gt() %>% 
+  fmt_percent(columns=dist_post,decimals = 3)
+```
+
 b.  Encontrar la probabilidad de que no haya descomposturas durante la siguiente semana. Hint: Si la tasa es λ, la probabilidad condicional de no descomposturas durante un periodo de 7 días está dado por exp(−7λ). Se puede calcular esta probabilidad predictiva multiplicando la lista de probabilidades condicionales por las probabilidades posteriores de λ y encontrando la suma de los productos
+
+```{r}
+# calculamos la condicional y multiplicamos por la posterior
+tabla <- dist_post %>% 
+  mutate(condicional=exp(-7*val_lam),
+         cond_post = condicional*dist_post) %>%
+  summarise(prob_y_0=sum(cond_post))
+```
+
+```{r echo=FALSE}
+tabla %>% gt() %>% fmt_percent(decimals = 4)
+```
 
 ### 2. Estimando una proporción y predicción de una muestra futura
 
-Un estudio reporta sobre los efectos de largo plazo de exposición a bajas dosis de plomo en niños. Los investigadores analizaron el contenido de plomo en la caída de los dientes de leche. De los niños cuyos dientes tienen un contenido de plomo mayor que 22.22 ppm, 22 eventualmente se graduaron de la preparatoria y 7 no. Supongan que su densidad inicial para p, la proporción de todos tales niños que se graduaron de preparatoria es beta(1, 1), y posterior es beta(23, 8).
+Un estudio reporta sobre los efectos de largo plazo de exposición a bajas dosis de plomo en niños. Los investigadores analizaron el contenido de plomo en la caída de los dientes de leche. De los niños cuyos dientes tienen un contenido de plomo mayor que $22.22$ ppm, $22$ eventualmente se graduaron de la preparatoria y $7$ no. Supongan que su densidad inicial para $p$, la proporción de todos tales niños que se graduaron de preparatoria es $beta(1, 1)$, y posterior es $beta(23, 8)$.
 
 a.  Encontrar un intervalo estimado de 90 % para p.
 
+```{r}
+inferior <-qbeta(0.05,23,8)
+superior <- qbeta(0.95,23,8)
+```
+
+```{r}
+data.frame(Inferior_90=inferior,
+           Superior_90=superior) %>%
+  gt() %>% 
+  fmt_number(decimals = 2)
+```
+
 b.  Encontrar la probabilidad de que p exceda 0.6.
 
-### 3. Estimando una media normal posterior con una inicial discreta 
+```{r}
+prob_p_over60 <- 1- pbeta(0.6,23,8)
+```
 
-Supongamos que están interesados en estimar el promedio de caida de lluvia por año µ en (cm) para una ciudad grande del Centro de México. Supongan que la caída anual individual y1, . . . , yn son obtenidas de una población que se supone N (µ, 100). Antes de recolectar los datos, supongan que creen que la lluvia media puede estar en los siguiente valores con respectivas probabilidades
+```{r echo=FALSE}
+data.frame(Prob_over60=prob_p_over60) %>% 
+  gt() %>% 
+  fmt_percent()
+```
 
-µ 20 30 40 50 60 70
+### 3. Estimando una media normal posterior con una inicial discreta
 
-g(µ) 0.1 0.15 0.25 0.25 0.15 0.1
+Supongamos que están interesados en estimar el promedio de caida de lluvia por año $µ$ en (cm) para una ciudad grande del Centro de México. Supongan que la caída anual individual $y_1, . . . , y_n$ son obtenidas de una población que se supone $N (µ, 100)$. Antes de recolectar los datos, supongan que creen que la lluvia media puede estar en los siguiente valores con respectivas probabilidades
+
+|      |     |      |      |      |      |     |
+|------|-----|------|------|------|------|-----|
+| µ    | 20  | 30   | 40   | 50   | 60   | 70  |
+| g(µ) | 0.1 | 0.15 | 0.25 | 0.25 | 0.15 | 0.1 |
 
 a.  Supongan que se observan los totales de caída de lluvia 38.6, 42.4, 57.5, 40.5, 51.7, 67.1, 33.4, 60.9, 64.1, 40.1, 40.7 y 6.4. Calcular la media.
 
-b.  Calcular la función de verosimilitud utilizando como estadística suficiente la media y¯.
+```{r}
+datos_obs <- c(38.6, 42.4, 57.5, 40.5, 51.7, 67.1, 
+               33.4, 60.9, 64.1, 40.1, 40.7, 6.4)
+
+media_obs <- mean(datos_obs)
+```
+
+```{r echo=FALSE}
+data.frame(Media=media_obs) %>% gt() %>% fmt_number()
+```
+
+b.  Calcular la función de verosimilitud utilizando como estadística suficiente la media $\bar{y}$.
+
+    ```{r}
+    data <- data.frame(mu=c(20,30,40,50,60,70))
+
+    data <- data %>% 
+      mutate(verosim=exp(-12*((media_obs-mu)^2)/(2*100)))
+    ```
 
     -   Calcular las probabilidades posteriores para µ
+
+    ```{r}
+    data$g_mu <- c(0.1,0.15,0.25,0.25,0.15,0.1)
+
+    data <- data %>% 
+      mutate(vs_ini=verosim*g_mu,
+             post=vs_ini/sum(vs_ini))
+    ```
+
+    ```{r echo=FALSE}
+    data %>% 
+      select(mu, post) %>%
+      gt() %>% 
+      fmt_scientific(columns=post, decimals = 2)
+    ```
 
     -   Encontrar un intervalo de probabilidad de 80 % para µ.
 
 ### 4. Modelo muestral Cauchy
 
-Supongan que se observa una muestra aleatoria y1, . . . , yn de una densidad Cauchy con parámetro de localización θ y parámetro de escala 1. Si una inicial uniforme se considera para θ, entonces la densidad posterior, ¿cuál es? Supongan que se observan los datos 0,10,9,8,11,3,3,8,8,11.
+Supongan que se observa una muestra aleatoria $y_1, . . . , y_n$ de una densidad Cauchy con parámetro de localización $θ$ y parámetro de escala 1. Si una inicial uniforme se considera para $θ$, entonces la densidad posterior, ¿cuál es? Supongan que se observan los datos $0,10,9,8,11,3,3,8,8,11$.
 
 a.  Calcula un grid para θ de -2 a 12 en pasos de 0.1
 
 ```{r}
-# Defining theta and observed_data
 theta <- seq(-2, 12, by=0.1)
 observed_data <- c(0, 10, 9, 8, 11, 3, 3, 8, 8, 11)
 
@@ -83,7 +178,7 @@ c.  Grafica la densidad y comenten sobre sus características principales.
 
 d.  Calcula la media posterior y desviación estándar posterior.
 
-### 5. Robustez Bayesiana 
+### 5. Robustez Bayesiana
 
 Supongan que están a punto de lanzar una moneda que creen que es honesta. Si p denota la probabilidad de obtener sol, entonces su mejor creencia es que p = 0.5 Adicionalmente, creen que es altamente probable que la moneda sea cercana a honesta, lo que cuantifican como $P(0.44 ≤ p ≤ 0.56) = 0.9$. Consideren las siguientes dos iniciales para p:
 
@@ -134,7 +229,7 @@ p1_post <- data.frame(valor=rbeta(1000,
 quantile(p1_post$valor, probs = c(0.05, 0.95))
 ```
 
--    Supongan que sólo observan 30 soles de los 100 lanzamientos. Nuevamente simular 1000 valores de las dos posteriores y calcular intervalos de probabilidad del 90 %.
+-   Supongan que sólo observan 30 soles de los 100 lanzamientos. Nuevamente simular 1000 valores de las dos posteriores y calcular intervalos de probabilidad del 90 %.
 
 ```{r}
 p1_post <- data.frame(valor=rbeta(1000, 
