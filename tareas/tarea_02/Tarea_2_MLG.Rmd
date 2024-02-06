@@ -1,0 +1,647 @@
+---
+title: "Tarea 2 - Modelos Lineales Generalizados"
+author: "xxxxxx"
+date: "2024-02-06"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(gt)
+library(ggplot2)
+```
+
+# Tarea 2.
+
+Fecha de entrega: 6 de febrero 2024.
+
+## 1. Estimando una media Poisson usando una inicial discreta.
+
+> Supongan que son dueños de una compañía de transporte con una flota
+> grande de camiones. Las descomposturas ocurren aleatoriamente en el
+> tiempo y supóngase que el número de descomposturas durante un
+> intervalo de t días sigue un distribución Poisson con media
+> $\lambda t$. El parámetro $\lambda$ es la tasa de descompostura
+> diaria. Los posibles valores para $\lambda$ son 0.5, 1, 1.5, 2,2.5 y
+> 3, con respectivas probabilidades 0.1, 0.2, 0.3, 0.2, 0.15 y 0.05. Si
+> uno observa $y$ descomposturas, entonces la probabilidad posterior de
+> $\lambda$ es proporcional a $$g(\lambda)exp(-t\lambda)(t\lambda)^y,$$
+> donde $g$ es la distribución inicial.
+
+> a.  Si 12 camiones se descomponen en un periodo de 6 días, encontrar
+>     la probabilidad posterior para las diferentes tasas.
+
+```{r}
+# Datos observados
+y <- 12  # Número de descomposturas
+t <- 6   # Número de días
+
+# Parámetros y distribución inicial
+v_lambda <- c(0.5, 1, 1.5, 2, 2.5, 3)
+prob_inicial <- c(0.1, 0.2, 0.3, 0.2, 0.15, 0.05)
+
+# Función de la distribución inicial
+g <- function(lambda){
+  prob_inicial[v_lambda == lambda]
+}
+
+# Función de la probabilidad posterior
+dist_post <- function(lambda, y, t){
+  g(lambda) * exp(-t * lambda) * (t * lambda)^y
+}
+
+# Calculamos la probabilidad posterior para cada valor de lambda
+prob_post <- sapply(v_lambda, dist_post, y = y, t = t)
+
+# Normalizamos las probabilidades para obtener la distribución posterior
+prob_post <- prob_post / sum(prob_post)
+
+# Imprimimos los resultados
+resultados <- data.frame(lambda = v_lambda,prob_inicial = prob_inicial, prob_posterior = prob_post)
+resultados |> gt() |> fmt_percent(columns = prob_inicial, decimals = 0) |> fmt_percent(columns = prob_posterior, decimals = 3) 
+
+```
+
+> b.  Encontrar la probabilidad de que no haya descomposturas durante la
+>     siguiente semana. Hint: Si la tasa es $\lambda$, la probabilidad
+>     condicional de no descomposturas durante un periodo de 7 días está
+>     dado por $exp(-7\lambda)$. Se puede calcular esta probabilidad
+>     predictiva multiplicando la lista de probabilidades condicionales
+>     por las probabilidades posteriores de $\lambda$ y encontrando la
+>     suma de los productos
+
+```{r}
+# Definir la función de probabilidad condicional para no descomposturas en 7 días
+prob_nofalla <- function(lambda, t) {
+  exp(-t * lambda) }
+
+# Calcular la probabilidad predictiva multiplicando por las probabilidades posteriores y sumando
+tabla_prob_pred <- resultados |>
+  mutate(prob_pred = prob_posterior * prob_nofalla(v_lambda, 7)) |>
+  summarise(prob_predt = sum(prob_pred)) |>
+  gt() |> fmt_percent(columns = prob_predt, decimals = 3) 
+
+tabla_prob_pred
+```
+
+## 2. Estimando una proporción y predicción de una muestra futura.
+
+> Un estudio reporta sobre los efectos de largo plazo de exposición a
+> bajas dosis de plomo en niños. Los investigadores analizaron el
+> contenido de plomo en la caída de los dientes de leche. De los niños
+> cuyos dientes tienen un contenido de plomo mayor que 22.22 ppm, 22
+> eventualmente se graduaron de la preparatoria y 7 no. Supongan que su
+> densidad inicial para $p$, la proporción de todos tales niños que se
+> graduaron de preparatoria es $beta(1, 1)$, y posterior es
+> $beta(23, 8)$.
+
+> a.  Encontrar un intervalo estimado de 90% para $p$.
+
+```{r}
+# Parámetros de la distribución Beta posterior
+alpha_post <- 23
+beta_post <- 8
+
+# Percentiles de la distribución Beta para construir el intervalo
+percentiles <- c(0.05, 0.95)
+
+# Cuantiles de la distribución Beta
+intervalo <- qbeta(percentiles, alpha_post, beta_post)
+
+# Imprimir el resultado
+data.frame(inf_05 = intervalo[1],
+           sup_95 = intervalo[2]) |> gt() |> fmt_number(decimals = 2) 
+
+```
+
+> b.  Encontrar la probabilidad de que $p$ exceda 0.6.
+
+```{r}
+# Parámetros de la distribución Beta posterior
+alpha_post <- 23
+beta_post <- 8
+
+# Probabilidad de que p exceda 0.6
+p <- 1 - pbeta(0.6, alpha_post, beta_post)
+
+data.frame(p_exc60 = p) |> gt() |> fmt_percent(decimals = 2)
+
+```
+
+## 3. Estimando una media normal posterior con una inicial discreta.
+
+> Supongamos que están interesados en estimar el promedio de caida de
+> lluvia por año $\mu$ en (cm) para una ciudad grande del Centro de
+> México. Supongan que la caída anual individual $y_1, . . . , y_n$ son
+> obtenidas de una población que se supone $N(\mu, 100)$. Antes de
+> recolectar los datos, supongan que creen que la lluvia media puede
+> estar en los siguiente valores con respectivas probabilidades
+
+| $\mu$    | 20  | 30   | 40   | 50   | 60   | 70  |
+|----------|-----|------|------|------|------|-----|
+| $g(\mu)$ | 0.1 | 0.15 | 0.25 | 0.25 | 0.15 | 0.1 |
+
+> a.  Supongan que se observan los totales de caída de lluvia 38.6,
+>     42.4, 57.5, 40.5, 51.7, 67.1, 33.4, 60.9, 64.1, 40.1, 40.7 y 6.4.
+>     Calcular la media.
+
+**Solución** Para calcular la media posterior en este escenario,
+utilizaremos el enfoque bayesiano y la distribución normal conjugada. La
+distribución inicial es discreta y se da como $g(\mu)$, y la
+verosimilitud es la distribución normal $N(\mu,100)$.El código en R para
+calcular la media posterior después de observar los datos proporcionados
+sería el siguiente:
+
+```{r}
+# Datos observados
+datos <- c(38.6, 42.4, 57.5, 40.5, 51.7, 67.1, 33.4, 60.9, 64.1, 40.1, 40.7, 6.4)
+
+# Parámetros de la distribución inicial
+v_mu <- c(20, 30, 40, 50, 60, 70)
+prob_inicial <- c(0.1, 0.15, 0.25, 0.25, 0.15, 0.1)
+
+# Número de observaciones
+n <- length(datos)
+
+# Actualizar la distribución inicial con los datos observados
+for (i in 1:length(v_mu)) {
+  prob_inicial[i] <- prob_inicial[i] * prod(dnorm(datos, mean = v_mu[i], sd = 10))
+}
+
+# Normalizar las probabilidades
+prob_inicial <- prob_inicial / sum(prob_inicial)
+
+# Calcular la media posterior
+media_post <- sum(prob_inicial * v_mu)
+
+data.frame(media = media_post) |> gt() |> fmt_number(decimals = 2)
+
+```
+
+> b.  Calcular la función de verosimilitud utilizando como estadística
+>     suficiente la media $\bar{y}$.
+>
+> -   Calcular las probabilidades posteriores para $\mu$
+> -   Encontrar un intervalo de probabilidad de 80% para $\mu$.
+
+**Solución**
+
+```{r}
+# Datos observados
+datos <- c(38.6, 42.4, 57.5, 40.5, 51.7, 67.1, 33.4, 60.9, 64.1, 40.1, 40.7, 6.4)
+
+# Distribución a priori
+v_mu <- c(20, 30, 40, 50, 60, 70)
+g_mu <- c(0.1, 0.15, 0.25, 0.25, 0.15, 0.1)
+
+# Parámetros de la distribución normal
+desv_est <- 10
+media_m <- mean(datos)
+
+# Calculamos la función de verosimilitud
+verosimilitud <- dnorm(media_m, mean = v_mu, sd = desv_est)
+
+# Calculamos la distribución a posteriori
+p_post <- g_mu * verosimilitud
+p_post <- p_post / sum(p_post)
+
+# Calculamos el intervalo de probabilidad del 80%
+cumulative_prob <- cumsum(p_post)
+lower_quantile <- min(v_mu[cumulative_prob >= 0.1])
+upper_quantile <- max(v_mu[cumulative_prob <= 0.9])
+
+intervalo_80 <- c(lower_quantile, upper_quantile)
+
+res3 <- data.frame(mu = v_mu, verosimilitud = verosimilitud, posterior = p_post)
+res3 |> gt() 
+
+int_80 <- data.frame(inf_80 = lower_quantile,sup_80 = upper_quantile)
+int_80 |> gt() 
+```
+
+##4. Modelo muestral Cauchy.
+
+> Supongan que se observa una muestra aleatoria $y_1, ... , y_n$ de una
+> densidad Cauchy con parámetro de localización $theta$ y parámetro de
+> escala 1. Si una inicial uniforme se considera para $theta$, entonces
+> la densidad posterior, ¿cuál es? Supongan que se observan los datos
+> 0,10,9,8,11,3,3,8,8,11. a. Calcula un grid para $theta$ de -2 a 12 en
+> pasos de 0.1
+
+```{r}
+# Datos observados
+datos <- c(0, 10, 9, 8, 11, 3, 3, 8, 8, 11)
+
+# Definir el grid para theta
+theta_grid <- seq(-2, 12, by = 0.1)
+theta_grid
+```
+
+> b.  Calcula la densidad posterior en este grid.
+
+```{r}
+# Datos observados
+datos <- c(0, 10, 9, 8, 11, 3, 3, 8, 8, 11)
+
+# Definir el grid para theta
+theta_grid <- seq(-2, 12, by = 0.1)
+
+# Función de densidad de la distribución Cauchy
+densidad_cauchy <- function(theta, datos) {
+  veros <- prod(1 / (pi * (1 + (datos - theta)^2)))
+  prior <- 1 / (12 - (-2))  # Densidad a priori constante en el intervalo [-2, 12]
+  posterior <- veros * prior
+  return(posterior)
+}
+
+# Calcular la densidad posterior en el grid
+d_posterior <- sapply(theta_grid, function(theta) densidad_cauchy(theta, datos))
+
+# Normalizar la densidad posterior para que sume 1
+d_posterior <- d_posterior / sum(d_posterior)
+
+# Mostrar el resultado
+res4b <- data.frame(theta = theta_grid, densidad_post = d_posterior)
+res4b |> gt()
+```
+
+> c.  Grafica la densidad y comenten sobre sus características
+>     principales.
+
+```{r}
+# Crear el gráfico de densidad posterior
+ggplot(res4b, aes(x = theta, y = d_posterior)) +
+  geom_line() +
+  labs(title = "Densidad Posterior para el parámetro theta",
+       x = "theta",
+       y = "Densidad Posterior") +
+  theme_minimal()
+```
+
+> d.  Calcula la media posterior y desviación estándar posterior.
+
+**Solución**
+
+```{r}
+res4d <- res4b |> summarise(media_post = sum(theta_grid * d_posterior),
+            desv_est_post = sqrt(sum((theta_grid - media_post)^2 * d_posterior)))
+
+res4d |> gt() |> fmt_number(decimals = 8)
+
+```
+
+## 5. Robustez Bayesiana
+
+> Supongan que están a punto de lanzar una moneda que creen que es
+> honesta. Si p denota la probabilidad de obtener sol, entonces su mejor
+> creencia es que $p = 0.5$. Adicionalmente, creen que es altamente
+> probable que la moneda sea cercana a honesta, lo que cuantifican como
+> $P(0.44 ≤ p ≤ 0.56) = 0.9$. Consideren las siguientes dos iniciales
+> para p: $$P1 p ∼ beta(100, 100)$$
+> $$P2 p ∼ 0.9beta(500, 500) + 0.1beta(1, 1)$$
+
+> a.  Simular 1000 valores de cada densidad inicial P1 y P2. Resumiendo
+>     las muestras simuladas, mostrar que ambas iniciales concuerdan con
+>     las creencias iniciales acerca de la probabilidad $p$ del
+>     lanzamiento de moneda.
+
+```{r}
+# Simular 1000 valores de P1
+set.seed(123)  # Para reproducibilidad
+p1_sim <- rbeta(1000, 100, 100)
+
+# Simular 1000 valores de P2
+set.seed(123)  # Para reproducibilidad
+p2_sim <- 0.9 * rbeta(1000, 500, 500) + 0.1 * rbeta(1000, 1, 1)
+
+est_p1 <- data.frame(
+  media = mean(p1_sim),
+  desv_est = sd(p1_sim),
+  varianza = var(p1_sim)) |> gt() |>
+  tab_header(
+    title = "Estadisticas de P1",
+    subtitle = "Beta(100,100)") |> fmt_number(decimals = 4)
+est_p1
+
+est_p2 <- data.frame(
+  media = mean(p2_sim),
+  desv_est = sd(p2_sim),
+  varianza = var(p2_sim)) |> gt() |>
+  tab_header(
+    title = "Estadisticas de P2",
+    subtitle = "0.9Beta(500, 500) + 0.1Beta(1, 1)") |> fmt_number(decimals = 4)
+est_p2
+
+```
+
+> *Podemos observar que ambas distribuciones iniciales (P1 y P2)
+> concuerdan* *con las creencias iniciales de que la probabilidad*
+> $p=0.5$
+
+> b.  Supongan que lanzan la moneda 100 veces y obtienen 45 soles.
+>     Simular 1000 valores de las distribuciones posteriores P1 y P2, y
+>     calcular intervalos de probabilidad del 90 %.
+
+```{r}
+# Datos observados
+lanza <- 100
+sol_obs <- 45
+
+# Simular 1000 valores de la distribución posterior P1
+set.seed(123)  
+p1_post <- rbeta(1000, 100 + sol_obs, 100 + lanza - sol_obs)
+
+# Simular 1000 valores de la distribución posterior P2
+set.seed(123) 
+p2_post <- 0.9 * rbeta(1000, 500 + sol_obs, 500 + lanza - sol_obs) +
+                 0.1 * rbeta(1000, 1 + sol_obs, 1 + lanza - sol_obs)
+
+# Calcular intervalos de probabilidad del 90%
+int_90_p1 <- quantile(p1_post, c(0.05, 0.95))
+int_90_p2 <- quantile(p2_post, c(0.05, 0.95))
+
+inter_90 <- data.frame(inf_p1 = int_90_p1[1],
+                       sup_p1 = int_90_p1[2],
+                       inf_p2 = int_90_p2[1],
+                       sup_p2 = int_90_p2[2]) |> gt() |> 
+  tab_header(
+    title = "Intervalos de P1 y P2",
+    subtitle = "Considerando 45 soles") |> fmt_number(decimals = 4)
+
+inter_90
+```
+
+> c.  Supongan que sólo observan 30 soles de los 100 lanzamientos.
+>     Nuevamente simular 1000 valores de las dos posteriores y calcular
+>     intervalos de probabilidad del 90 %.
+
+```{r}
+# Datos observados
+lanza <- 100
+sol_obs <- 30
+
+# Simular 1000 valores de la distribución posterior P1
+set.seed(123)  
+cp1_post <- rbeta(1000, 100 + sol_obs, 100 + lanza - sol_obs)
+
+# Simular 1000 valores de la distribución posterior P2
+set.seed(123) 
+cp2_post <- 0.9 * rbeta(1000, 500 + sol_obs, 500 + lanza - sol_obs) +
+                 0.1 * rbeta(1000, 1 + sol_obs, 1 + lanza - sol_obs)
+
+# Calcular intervalos de probabilidad del 90%
+cint_90_p1 <- quantile(cp1_post, c(0.05, 0.95))
+cint_90_p2 <- quantile(cp2_post, c(0.05, 0.95))
+
+cinter_90 <- data.frame(inf_p1 = cint_90_p1[1],
+                       sup_p1 = cint_90_p1[2],
+                       inf_p2 = cint_90_p2[1],
+                       sup_p2 = cint_90_p2[2]) |> gt() |>
+  tab_header(
+    title = "Intervalos de P1 y P2",
+    subtitle = "Considerando 30 soles") |> fmt_number(decimals = 4)
+
+cinter_90
+```
+
+> d.  Viendo los resultados de (b) y (c), comentar sobre la robustez de
+>     la inferencia con respecto a la elección de la densidad inicial en
+>     cada caso.
+
+**Solución** \>\_Los métodos P1 y P2 proporcionaron intervalos de
+probabilidad del 90% bastante similares, para \>ambos escenarios (45 y
+30 soles), sin embargo, para el escenario de 30 soles, dicho intervalo
+se \>amplio por considerar menos número de soles. \>Concluyendo, los
+resultados sugieren que las elecciones de las densidades iniciales P1 y
+P2 fueron \>lo suficientemente razonables y condujeron a inferencias
+robustas dadas las observaciones.
+
+## 6. Aprendiendo de datos agrupados.
+
+> Supongan que manejan en carretera y típicamente manejan a una
+> velocidad constante de 70km/h. Un día, rebasan un carro y son
+> rebasados por 17 carros. Supongan que las velocidades son distribuídas
+> $N(\mu, 100)$. Si rebasan s carros y son rebasados por f,
+
+> a.  ¿Cuál es la verosimilitud de $\mu$?
+
+```{r}
+# Verosimilitud de mu
+verosimilitud <- function(mu, s, f, vel) {
+  likelihood <- (1 / sqrt(2 * pi * 100)) ^ (s + f) *
+    exp(-(sum((rep(vel, s + f) - mu)^2) / 200))
+  return(likelihood)
+}
+
+# Log-verosimilitud de mu
+log_verosimilitud <- function(mu, s, f, vel) {
+  log_likelihood <- -((s + f) / 2) * log(2 * pi * 100) -
+    (sum((rep(vel, s + f) - mu)^2) / 200)
+  return(log_likelihood)
+}
+```
+
+> b.  Asignando una densidad inicial plana para $\mu$, si s = 1 y f =
+>     17, graficar la densidad posterior de $\mu$.
+
+```{r}
+# Datos
+s <- 1  # Número de veces que rebasaron
+f <- 17  # Número de veces que fueron rebasados
+# Velocidad constante asumida (70 km/h)
+vel <- 70
+
+# Rango para la densidad a priori de mu
+v_mu <- seq(50, 90, by = 0.1)
+
+# Densidad a priori plana (constante en el rango)
+prior_mu <- rep(1, length(v_mu))
+
+# Verosimilitud
+verosimilitud <- dnorm(rep(vel, s + f), mean = v_mu, sd = 10)
+
+# Densidad a posteriori sin normalizar
+post_norm <- verosimilitud * prior_mu
+
+# Normalizar la densidad a posteriori
+post <- post_norm / sum(post_norm)
+
+# Graficar densidad a posteriori
+df <- data.frame(mu = v_mu, posterior = post)
+
+ggplot(df, aes(x = mu, y = posterior)) +
+  geom_line(color = "blue", linetype = "dashed") +
+  labs(x = expression(mu), y = "Densidad posterior",
+       title = "Densidad posterior de mu con densidad inicial plana")
+```
+
+> b.  Usando la densidad encontrada en (a), encontrar la media posterior
+>     de μ.
+
+```{r}
+# Calcular la media posterior de mu
+media_post <- sum(v_mu * post)
+
+data.frame(media_post) |> gt()
+```
+
+> c.  Encontrar la probabilidad de que la velocidad promedio de los
+>     carros exceda 80 km/h.
+
+```{r}
+prob80 <- 1 - pnorm(80, mean = media_post, sd = 10)
+
+data.frame(Prob_exceder_80 = prob80) |> gt() |> fmt_percent(decimals = 2)
+```
+
+## 7. Problema de Behrens-Fisher.
+
+> Supongan que se observan dos muestras normales independientes, la
+> primera se distribuye de acuerdo a una $N(\mu_1,\sigma^2_1)$ y la
+> segunda de acuerdo a $N(\mu_2,\sigma^2_2)$.Denoten la primera muestra
+> por $x_1,...,x_m$ y la segunda muestra por $y_1,...,y_n.$ Supongan
+> también que los parámetros
+> $$\theta = (\mu_1,\sigma^2_1,\mu_2,\sigma^2_2)$$ tienen la
+> distribución inicial vaga dada por:
+> $$g(\theta)\propto\frac{1}{\sigma_1^2\sigma_2^2}$$
+
+> a.  Encontrar la densidad posterior. Mostrar que los vectores
+>     $(\mu_1,\sigma_1^2)$ y $(\mu_2,\sigma_2^2)$ tienen distribuciones
+>     posteriores independientes.
+
+> Para encontrar la densidad posterior, primero necesitamos establecer
+> las distribuciones a priori y las verosimilitudes. Dado que se nos
+> dice que los parámetros tienen una distribución inicial vaga
+> proporcional a $$\frac{1}{\sigma_1^2\sigma_2^2}$$podemos expresar la
+> densidad a priori conjunta como:
+> $$g(\mu_1,\sigma_1^2,\mu_2,\sigma_2^2)\propto\frac{1}{\sigma_1^2\sigma_2^2}$$
+> Ahora, la verosimilitud de las muestras $x$ y $y$, dado los parámetros
+> $(\mu_1,\sigma_1^2,\mu_2,\sigma_2^2)$, se pueden expresar como el
+> producto de las verosimilitudes para las dos muestras, ya que son
+> independientes y cada una sigue una distribución normal:
+> $$L(x_1,...,x_m,y_1,...,y_n|\mu_1,\sigma_1^2,\mu_2,\sigma_2^2) = $$
+> $$L(x_1,...,x_m|\mu_1,\sigma_1^2)*L(y_1,...,y_n|\mu_2,\sigma_2^2)$$
+> $$=(\frac{1}{\sqrt{2\pi\sigma_1}})^m*exp(-\frac{1}{2\sigma_1^2}*\sum_{i=1}^{m}(x_i-\mu_1)^2)*$$
+> $$(\frac{1}{\sqrt{2\pi\sigma_2}})^n*exp(-\frac{1}{2\sigma_2^2}*\sum_{i=1}^{n}(y_i-\mu_2)^2)$$
+> Multiplicando la densidad a priori por la verosimilitud, obtenemos la
+> densidad posterior proporcional a:
+> $$g(\mu_1,\sigma_1^2,\mu_2,\sigma_2^2|x_1,...,x_m,y_1,...,y_n)\propto\frac{1}{\sigma_1^2\sigma_2^2}*$$
+> $$(\frac{1}{\sqrt{2\pi\sigma_1}})^m*exp(-\frac{1}{2\sigma_1^2}*\sum_{i=1}^{m}(x_i-\mu_1)^2)*$$
+> $$(\frac{1}{\sqrt{2\pi\sigma_2}})^n*exp(-\frac{1}{2\sigma_2^2}*\sum_{i=1}^{n}(y_i-\mu_2)^2)$$Para
+> encontrar la densidad posterior, normalizamos esta expresión. Sin
+> embargo, antes de hacer eso, mostraremos que $(\mu_1,\sigma_1^2)$ y
+> $(\mu_2,\sigma_2^2)$ tienen distribuciones posteriores independientes.
+> Esto significa que podemos tratar $\mu_1$ y $\sigma_1^2$ como
+> parámetros independientes de $\mu_2$ y $\sigma_2^2$. Para mostrar la
+> independencia de $(\mu_1,\sigma_1^2)$ y $(\mu_2,\sigma_2^2)$, debemos
+> demostrar que la densidad posterior conjunta se factoriza en las
+> densidades marginales de $(\mu_1,\sigma_1^2)$ y $(\mu_2,\sigma_2^2)$.
+> Dado que estamos trabajando con densidades proporcionales, es
+> suficiente demostrar la factorización proporcional:
+> $$g(\mu_1,\sigma_1^2,\mu_2,\sigma_2^2|x_1,...,x_m,y_1,...,y_n)\propto g(\mu_1,\sigma_1^2|x_1,...,x_m)*g(\mu_2,\sigma_2^2|y_1,...,y_n)$$Esta
+> factorización implica que $(\mu_1,\sigma_1^2)$ y $(\mu_2,\sigma_2^2)$,
+> tienen distribuciones posteriores independientes.
+
+> b.  Describir cómo simular la densidad posterior conjunta de $\theta$.
+
+> El algoritmo de muestreo de Gibbs generará una muestra de la densidad
+> posterior conjunta de $\theta$, permitiéndote estimar sus
+> características y realizar inferencias sobre los parámetros.
+
+> c.  Los siguientes datos dan la longitud de la mandíbula en mm para 10
+>     chacales machos y 10 chacales hembras en la colección del Museo
+>     Británico. Usando simulación, encontrar la densidad posterior de
+>     la diferencia en la longitud media de las mandíbulas entre los
+>     sexos. ¿Hay suficiente evidencia para concluir que los machos
+>     tienen una longitud promedio mayor que las hembras?
+
+| Machos  | 120 | 107 | 110 | 116 | 114 | 111 | 113 | 117 | 114 | 112 |
+|---------|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+| Hembras | 110 | 111 | 107 | 108 | 110 | 105 | 107 | 106 | 111 | 111 |
+
+```{r}
+# Datos
+machos <- c(120, 107, 110, 116, 114, 111, 113, 117, 114, 112)
+hembras <- c(110, 111, 107, 108, 110, 105, 107, 106, 111, 111)
+
+# Parámetros iniciales
+mu_m <- mean(machos)
+mu_h <- mean(hembras)
+sigma <- sd(c(machos, hembras))
+iteraciones <- 10000
+
+# Almacenar resultados
+dif_long <- numeric(iteraciones)
+
+# Simulación con muestreo de Gibbs
+set.seed(123)  
+for (i in 1:iteraciones) {
+  # Actualizar mu_machos condicional a otros parámetros y datos
+  mu_m <- rnorm(1, mean = mean(machos), sd = sigma/sqrt(length(machos)))
+  
+  # Actualizar mu_hembras condicional a otros parámetros y datos
+  mu_h <- rnorm(1, mean = mean(hembras), sd = sigma/sqrt(length(hembras)))
+  
+  # Calcular la diferencia de medias y almacenar en el vector resultado
+  dif_long[i] <- mu_m - mu_h
+}
+
+# Visualización de la densidad posterior
+hist(dif_long, col = "lightblue", main = "Densidad Posterior de la Diferencia en Longitud Media",
+     xlab = "Diferencia en Longitud Media (Machos - Hembras)", ylab = "Frecuencia")
+
+# Percentil 2.5 y 97.5 para intervalo de credibilidad del 95%
+quantiles <- quantile(dif_long, c(0.025, 0.975))
+abline(v = quantiles, col = "red", lty = 2)
+
+# Sumario estadístico
+cat("Intervalo de credibilidad al 95%: [", round(quantiles[1], 2), ",", round(quantiles[2], 2), "]\n")
+
+```
+
+> ¿Hay suficiente evidencia para concluir que los machos tienen una
+> longitud promedio mayor que las hembras?
+
+> Si, dado que los resultados de las simulaciones de las diferencias
+> entre la medida de la mandibula de los machos vs la de las hembras,
+> queda en un rango positivo [1.48,8.19].
+
+## 8. Estimando los parámetros de una densidad Poisson/Gamma.
+
+> Supongamos que $y_1, . . . , y_n$ es una muestra aleatoria de una
+> densidad
+> Poisson/Gamma:$$f(y|a,b)=\frac{\Gamma(y+a)}{\Gamma(a)y!} \frac{b^a}{(b+1)^{y+a}}$$
+> donde $a≥0, b≥0$. Esta densidad es un modelo apropiado para conteos
+> que muestran más dispersión que la que predice un modelo Poisson.
+> Supongamos que $(a,b)$ tiene asignada la inicial no informativa
+> proporcional a $1/(ab)^2$. Si transformamos a los parámetros
+> $\theta_1=log(a)$ y $\theta_2=log(b)$, la densidad posterior es\
+> proporcional a
+> $$g(\theta_1,\theta_2)\propto\frac{1}{ab}\prod_{i=1}^{n}\frac{\Gamma(y_i+a)}{\Gamma(a)y_i!} \frac{b^a}{(b+1)^{y_i+a}}$$
+> donde $a=exp(\theta_1)$ y $b=exp(\theta_2)$ Usa este marco para
+> modelar los datos obtenidos por Gilchrist (1984), en los que una serie
+> de 33 trampas de insectos fueron puestas sobre varias dunas de arena y
+> se registra el número de diferentes insectos atrapados sobre un tiempo
+> fijo. El número de insectos en las trampas se muestran a continuación:
+
+|     |     |     |     |     |     |     |     |     |     |     |
+|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+| 2   | 5   | 0   | 2   | 3   | 1   | 3   | 4   | 3   | 0   | 3   |
+| 2   | 1   | 1   | 0   | 6   | 0   | 0   | 3   | 0   | 1   | 1   |
+| 5   | 0   | 1   | 2   | 0   | 0   | 2   | 1   | 1   | 1   | 0   |
+
+> Calculando la densidad posterior sobre una retícula, simular 1000
+> extracciones de la densidad conjunta posterior de
+> $(\theta_1, \theta_2)$. De la muestra simulada, encontrar intervalos
+> estimados de 90% para los parámetros $a$ y $b$.
+
+```{r}
+# Datos
+y <- c(2, 5, 0, 2, 3, 1, 3, 4, 3, 0, 3, 2, 1, 1, 0, 6, 0,
+       0, 3, 0, 1, 1, 5, 0, 1, 2, 0, 0, 2, 1, 1, 1, 0)
+
+```
