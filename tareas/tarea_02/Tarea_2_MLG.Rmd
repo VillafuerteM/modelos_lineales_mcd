@@ -1,10 +1,12 @@
 ---
 title: "Tarea 2 - Modelos Lineales Generalizados"
-author: "xxxxxx"
-date: "2024-02-06"
-output: html_document
-editor_options: 
-  markdown: 
+authors: "Blanca E. García Manjarrez – 118886 Mariano Villafuerte Gonzalez – 156057
+  Thomas M. Rudolf - 169293 Yuneri Pérez Arellano - 199813"
+output:
+  html_document: default
+  pdf_document: default
+editor_options:
+  markdown:
     wrap: 72
 ---
 
@@ -15,9 +17,14 @@ library(gt)
 library(ggplot2)
 ```
 
-# Tarea 2.
+![](images/itam.png)
 
 Fecha de entrega: 6 de febrero 2024.
+
+-   Blanca E. García Manjarrez -- 118886
+-   Mariano Villafuerte Gonzalez -- 156057
+-   Thomas M. Rudolf - 169293
+-   Yuneri Pérez Arellano - 199813
 
 ## 1. Estimando una media Poisson usando una inicial discreta.
 
@@ -141,20 +148,21 @@ data.frame(p_exc60 = p) |> gt() |> fmt_percent(decimals = 2)
 > recolectar los datos, supongan que creen que la lluvia media puede
 > estar en los siguiente valores con respectivas probabilidades
 
-| $\mu$    | 20  | 30   | 40   | 50   | 60   | 70  |
+|          |     |      |      |      |      |     |
 |----------|-----|------|------|------|------|-----|
+| $\mu$    | 20  | 30   | 40   | 50   | 60   | 70  |
 | $g(\mu)$ | 0.1 | 0.15 | 0.25 | 0.25 | 0.15 | 0.1 |
 
 > a.  Supongan que se observan los totales de caída de lluvia 38.6,
 >     42.4, 57.5, 40.5, 51.7, 67.1, 33.4, 60.9, 64.1, 40.1, 40.7 y 6.4.
 >     Calcular la media.
 
-**Solución** Para calcular la media posterior en este escenario,
-utilizaremos el enfoque bayesiano y la distribución normal conjugada. La
-distribución inicial es discreta y se da como $g(\mu)$, y la
-verosimilitud es la distribución normal $N(\mu,100)$.El código en R para
-calcular la media posterior después de observar los datos proporcionados
-sería el siguiente:
+> Para calcular la media posterior en este escenario, utilizaremos el
+> enfoque bayesiano y la distribución normal conjugada. La distribución
+> inicial es discreta y se da como $g(\mu)$, y la verosimilitud es la
+> distribución normal $N(\mu,100)$.El código en R para calcular la media
+> posterior después de observar los datos proporcionados sería el
+> siguiente:
 
 ```{r}
 # Datos observados
@@ -187,8 +195,6 @@ data.frame(media = media_post) |> gt() |> fmt_number(decimals = 2)
 >
 > -   Calcular las probabilidades posteriores para $\mu$
 > -   Encontrar un intervalo de probabilidad de 80% para $\mu$.
-
-**Solución**
 
 ```{r}
 # Datos observados
@@ -223,7 +229,7 @@ int_80 <- data.frame(inf_80 = lower_quantile,sup_80 = upper_quantile)
 int_80 |> gt() 
 ```
 
-##4. Modelo muestral Cauchy.
+## 4. Modelo muestral Cauchy.
 
 > Supongan que se observa una muestra aleatoria $y_1, ... , y_n$ de una
 > densidad Cauchy con parámetro de localización $theta$ y parámetro de
@@ -283,8 +289,6 @@ ggplot(res4b, aes(x = theta, y = d_posterior)) +
 ```
 
 > d.  Calcula la media posterior y desviación estándar posterior.
-
-**Solución**
 
 ```{r}
 res4d <- res4b |> summarise(media_post = sum(theta_grid * d_posterior),
@@ -412,18 +416,20 @@ cinter_90
 >     la inferencia con respecto a la elección de la densidad inicial en
 >     cada caso.
 
-**Solución** \>\_Los métodos P1 y P2 proporcionaron intervalos de
-probabilidad del 90% bastante similares, para \>ambos escenarios (45 y
-30 soles), sin embargo, para el escenario de 30 soles, dicho intervalo
-se \>amplio por considerar menos número de soles. \>Concluyendo, los
-resultados sugieren que las elecciones de las densidades iniciales P1 y
-P2 fueron \>lo suficientemente razonables y condujeron a inferencias
-robustas dadas las observaciones.
+> Los métodos P1 y P2 proporcionaron intervalos de probabilidad del 90%
+> bastante similares, para ambos escenarios (45 y 30 soles), sin
+> embargo, para el escenario de 30 soles, dicho intervalo se amplio por
+> considerar menos número de soles. Cabe mencionar que P2 es el método
+> más robusto si partimos de una moneda honesta, ya que no se aleja
+> tanto en comparación que P1. Concluyendo, los resultados sugieren que
+> las elecciones de las densidades iniciales P1 y P2 fueron lo
+> suficientemente razonables y condujeron a inferencias robustas dadas
+> las observaciones.
 
 ## 6. Aprendiendo de datos agrupados.
 
 > Supongan que manejan en carretera y típicamente manejan a una
-> velocidad constante de 70km/h. Un día, rebasan un carro y son
+> velocidad constante de 70 km/h. Un día, rebasan un carro y son
 > rebasados por 17 carros. Supongan que las velocidades son distribuídas
 > $N(\mu, 100)$. Si rebasan s carros y son rebasados por f,
 
@@ -480,7 +486,7 @@ ggplot(df, aes(x = mu, y = posterior)) +
 ```
 
 > b.  Usando la densidad encontrada en (a), encontrar la media posterior
->     de μ.
+>     de $\mu$.
 
 ```{r}
 # Calcular la media posterior de mu
@@ -559,8 +565,9 @@ data.frame(Prob_exceder_80 = prob80) |> gt() |> fmt_percent(decimals = 2)
 >     sexos. ¿Hay suficiente evidencia para concluir que los machos
 >     tienen una longitud promedio mayor que las hembras?
 
-| Machos  | 120 | 107 | 110 | 116 | 114 | 111 | 113 | 117 | 114 | 112 |
+|         |     |     |     |     |     |     |     |     |     |     |
 |---------|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+| Machos  | 120 | 107 | 110 | 116 | 114 | 111 | 113 | 117 | 114 | 112 |
 | Hembras | 110 | 111 | 107 | 108 | 110 | 105 | 107 | 106 | 111 | 111 |
 
 ```{r}
@@ -640,8 +647,51 @@ cat("Intervalo de credibilidad al 95%: [", round(quantiles[1], 2), ",", round(qu
 > estimados de 90% para los parámetros $a$ y $b$.
 
 ```{r}
-# Datos
-y <- c(2, 5, 0, 2, 3, 1, 3, 4, 3, 0, 3, 2, 1, 1, 0, 6, 0,
-       0, 3, 0, 1, 1, 5, 0, 1, 2, 0, 0, 2, 1, 1, 1, 0)
+# Datos observados
+y <- c(2, 5, 0, 2, 3, 1, 3, 4, 3, 0, 3, 2, 1, 1, 0, 6, 0, 0, 3, 0, 1, 1, 5, 0, 1, 2, 0, 0, 2, 1, 1, 1, 0)
+
+# Función de densidad posterior
+dpost_PoisGamm <- function(theta1, theta2, y) {
+  a <- exp(theta1)
+  b <- exp(theta2)
+  n <- length(y)
+  
+  # Logaritmo de la función de densidad posterior
+  log_post <- sum(lgamma(y + a) - lgamma(a) - lgamma(y + 1) + a * log(b) - (y + a) * log(b + 1))
+  
+  # Normalización (logaritmo)
+  log_norm <- - n * log(a * b)
+  
+  # Logaritmo de la densidad posterior no normalizada
+  log_nonorm_post <- log_post + log_norm
+  
+  return(log_nonorm_post)
+}
+
+# Grid para thetas
+v_theta1 <- seq(-2, 2, 0.01)
+v_theta2 <- seq(-2, 2, 0.01)
+
+# Se obtienen las posteriores de theta
+vero_thetas <- sapply(v_theta1, function(theta1) {
+  sapply(v_theta2, function(theta2) {
+    sum(dpost_PoisGamm(theta1, theta2, y)) - (theta1 + theta2) }) 
+  }) |> apply(c(1, 2), sum) 
+
+
+# Simulación de 1000 veces la densidad conjunta posterior
+set.seed(123)
+muestras_sim <- replicate(1000, {
+  theta1_m <- sample(v_theta1, 1, prob = colSums(exp(vero_thetas)))
+  theta2_m <- sample(v_theta2, 1, prob = rowSums(exp(vero_thetas)))
+  c(exp(theta1_m),exp(theta2_m))
+})
+
+# Intervalos estimados del 90%
+quantiles <- apply(muestras_sim, 1, quantile, c(0.05, 0.95), na.rm = TRUE)
+
+# Imprimir resultados
+cat("Intervalo estimado del 90% para a:", round(quantiles[1, 1], 4), "-", round(quantiles[2, 1], 4), "\n")
+cat("Intervalo estimado del 90% para b:", round(quantiles[1, 2], 4), "-", round(quantiles[2, 2], 4), "\n")
 
 ```
