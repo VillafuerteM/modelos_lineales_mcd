@@ -1,0 +1,122 @@
+---
+title: "tarea_03_GLM_rdf"
+authors: "Blanca E. García Manjarrez – 118886 Mariano Villafuerte Gonzalez – 156057
+  Thomas M. Rudolf - 169293 Yuneri Pérez Arellano - 199813"
+output:
+  pdf_document: 
+    latex_engine: xelatex
+  html_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(gt)
+library(ggplot2)
+```
+
+## Problema 1
+
+Calcular el estimador de Monte Carlo de la integral
+
+$\int_{0}^{pi/3} sin(t)\,dt$
+
+y comparar el estimador con el valor exacto de la integral.
+
+```{r}
+## solución analitica
+## integral de sin(t) es -cos(t)
+sol_anlitica = -cos(pi/3) +cos(0)
+
+## solución MCMC
+
+num_samples = 10000
+h <- function(t){sin(t)}
+n_samples <- h(runif(num_samples, 0, pi/3))
+result_n <- cumsum(n_samples)/(1:num_samples)
+err_std <- sqrt(cumsum((n_samples-result_n)^2))/(1:num_samples)
+plt_df_p1 <- data.frame(n=1:num_samples, 
+                     result_n, 
+                     err_std, 
+                     upper = result_n + 2*err_std, 
+                     lower = result_n - 2*err_std )
+ggplot(plt_df_p1,  aes(x=n, y=result_n)) +
+  geom_line() +
+  geom_hline(yintercept = (-cos(pi/3)+cos(0))) +
+  geom_line(aes(x=n, y=upper), color = "red") +
+  geom_line(aes(x=n, y=lower), color = "red")
+```
+
+## Problema 2
+
+Escribir una función para calcular el estimador de Monte Carlo de la
+función de distribución Be (3, 3) y usar la función para estimar F(x)
+para x = 0.1, . . . , 0.9. Comparar los estimados con los valores
+obtenidos con la función pbeta de R.
+
+```{r}
+a = 3
+b = 3
+num_sample <- 10000
+n = seq(0,1, length.out= num_sample)
+plt_df_p2 <- data.frame(n, 
+                        beta_dist = dbeta(n, a,b))
+
+g2 <- ggplot(plt_df_p2, aes(x=n, y= beta_dist))+
+  geom_line() +
+  ylab("beta(3, 3)") 
+
+## take samples
+n_samples <- rbeta(num_sample, a,b)
+## calculate I_hat 
+I_hat <- sum(n_samples)/length(n_samples)
+## vairanz asimtotic
+var_I_hat <- sum((n_samples-I_hat)^2)/length(n_samples)
+# estimator MC
+estim_MC_p2 <- dnorm(seq(0,1, length.out=num_sample ),I_hat,  sqrt(var_I_hat) )
+
+plt_df_p2 <- plt_df_p2 %>% mutate(estim_MC_p2)
+
+g2 <- g2 + geom_line(aes(x=n, y = estim_MC_p2), color = "red")
+g2
+
+
+```
+
+3.  Usar integración Monte Carlo para estimar:
+
+    $\int_0^1 \frac{e^{-x}}{1+x^2}dx$
+
+y calcular el tamaño de muestra necesario para obtener un error de
+estimación máximo de ±0.001
+
+```{r}
+N <- 1000
+err_estim_max <- 0.001
+h <- function(x){
+  return(exp(-x)/(1+x^2))
+}
+x <- seq(0,1, length.out = N)
+Int <- cumsum(h(x))/(1:N)
+var_n <- sqrt((x-Int)^2)/(1:N)
+
+# find the first value that fulfils err_estim_max
+min_num_samples <- which(var_n < err_estim_max)[1]
+plt_df_p3 <- data.frame(x = x, 
+                        y = Int, 
+                        fcn=f(x))
+ggplot(plt_df_p3, aes(x=x, y=y)) +
+  geom_line() +
+  geom_line(aes(x=x, y=fcn), color="red")
+
+print("tamaño de muestra necesario:")
+print(min_num_samples)
+
+
+  
+```
+
