@@ -149,8 +149,8 @@ plt_df_p5 <- data.frame(x = x,
                         y = y)
 
 ## gamma distribution has a similar form as g(x)
-dist_IS1 <- dgamma(x, 5,3)/1.7
-dist_IS2 <- dnorm(x, 1.4,0.8)/1.6
+dist_IS1 <- dgamma(x, 5,3)#/1.7
+dist_IS2 <- dnorm(x, 1.4,0.8)#/1.6
 plt_df_p5 <- plt_df_p5 %>% mutate(f1 = dist_IS1,
                                   f2 = dist_IS2) 
 g5 <- ggplot(plt_df_p5, aes(x=x, y=y))+
@@ -159,7 +159,7 @@ g5 <- ggplot(plt_df_p5, aes(x=x, y=y))+
 
 g5 <- g5 + geom_line(aes(x=x, y=f1), color="red") +
   geom_line(aes(x=x, y=f2), color="green") +
-    labs(title = "Function and IS Function",
+    labs(title = "Function and IS Function to ensure that:\n 1. it is easy to simulate\n 2. the funcions are similar to f(theta) \n 3. has heavier tail than f(theta)\n the red one is a gamma distribution and the green one a normal distribution",
        x = "samples",
        y = "Densidad funcitons", 
        colours)
@@ -171,12 +171,12 @@ g5
 ```{r}
 ## sample of f1
 n = 1000
-sample_f1 <- rgamma(n,5,3)/1.7
-sample_f2 <- rnorm(n, 1.4,0.8)/1.6
+sample_f1 <- rgamma(n,5,3)#/1.7
+sample_f2 <- rnorm(n, 1.4,0.8)#/1.6
 
 ## Calculating I_hat_MI1
-I_hat_MI1 <- 1/n* sum(g(sample_f1)/(pgamma(sample_f1, 5,3)/1.7))
+I_hat_MI1 <- 1/n* sum(g(sample_f1)/(pgamma(sample_f1, 5,3))) #/1.7
 ## Calculating I_hat_MI2
-I_hat_MI2 <- 1/n* sum(g(sample_f2)/(pnorm(sample_f2, 1.4,0.8)/1.6))
+I_hat_MI2 <- 1/n* sum(g(sample_f2)/(pnorm(sample_f2, 1.4,0.8)))#/1.6
 ```
 
