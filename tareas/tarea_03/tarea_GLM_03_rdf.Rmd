@@ -108,7 +108,7 @@ var_n <- sqrt((x-Int)^2)/(1:N)
 min_num_samples <- which(var_n < err_estim_max)[1]
 plt_df_p3 <- data.frame(x = x, 
                         y = Int, 
-                        fcn=f(x))
+                        fcn=h(x))
 ggplot(plt_df_p3, aes(x=x, y=y)) +
   geom_line() +
   geom_line(aes(x=x, y=fcn), color="red")
@@ -118,5 +118,65 @@ print(min_num_samples)
 
 
   
+```
+
+4.  Sea $\hat{\theta}_{IS}$ el estimador de importancia de
+    $\theta = \int g(x) dx$, donde la función de importancia $f$ es una
+    densidad. Probar que si $g(x)/f(x)$ es acotada, entonces la varianza
+    del estimador de muestreo por importancia $\hat{\sigma}_IS$ es
+    finita.
+
+5.  Encontrar dos funciones de importancia f1 y f2 que tengan soporte en
+    (1, ∞) y estén ‘cerca’ de:
+    $g(x) = \frac{x^2}{\sqrt{2\pi}} e^{\frac{-x^2}{2}}$, x \> 1
+
+    ¿Cuál de las dos funciones de importancia debe producir la varianza
+    más pequeña para estimar la integral siguiente por muestreo de
+    importancia?
+
+    $\int_1^\inf{\frac{x^2}{\sqrt{2\pi}} e^{\frac{-x^2}{2}}}$
+
+```{r}
+## plot g(x)
+N <- 10000
+x <- seq(1, 5, length.out = N)
+g <- function(x){
+  g <- x^2/sqrt(2*pi) * exp(-x^2 / 2)
+  return(g)
+}
+y <- g(x)
+plt_df_p5 <- data.frame(x = x,
+                        y = y)
+
+## gamma distribution has a similar form as g(x)
+dist_IS1 <- dgamma(x, 5,3)/1.7
+dist_IS2 <- dnorm(x, 1.4,0.8)/1.6
+plt_df_p5 <- plt_df_p5 %>% mutate(f1 = dist_IS1,
+                                  f2 = dist_IS2) 
+g5 <- ggplot(plt_df_p5, aes(x=x, y=y))+
+  geom_line()
+
+
+g5 <- g5 + geom_line(aes(x=x, y=f1), color="red") +
+  geom_line(aes(x=x, y=f2), color="green") +
+    labs(title = "Function and IS Function",
+       x = "samples",
+       y = "Densidad funcitons", 
+       colours)
+g5
+  
+```
+
+
+```{r}
+## sample of f1
+n = 1000
+sample_f1 <- rgamma(n,5,3)/1.7
+sample_f2 <- rnorm(n, 1.4,0.8)/1.6
+
+## Calculating I_hat_MI1
+I_hat_MI1 <- 1/n* sum(g(sample_f1)/(pgamma(sample_f1, 5,3)/1.7))
+## Calculating I_hat_MI2
+I_hat_MI2 <- 1/n* sum(g(sample_f2)/(pnorm(sample_f2, 1.4,0.8)/1.6))
 ```
 
