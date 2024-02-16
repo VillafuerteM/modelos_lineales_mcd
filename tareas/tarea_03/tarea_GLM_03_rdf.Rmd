@@ -167,16 +167,68 @@ g5
   
 ```
 
-
 ```{r}
-## sample of f1
+set.seed(123)
+## sample of f1 and f2
 n = 1000
 sample_f1 <- rgamma(n,5,3)#/1.7
 sample_f2 <- rnorm(n, 1.4,0.8)#/1.6
 
 ## Calculating I_hat_MI1
 I_hat_MI1 <- 1/n* sum(g(sample_f1)/(pgamma(sample_f1, 5,3))) #/1.7
+##calculating the varianz of f1
+var_f1 <- 1/n^2 * sum(((g(sample_f1)/(pgamma(sample_f1, 5,3)))- I_hat_MI1)^2)
 ## Calculating I_hat_MI2
 I_hat_MI2 <- 1/n* sum(g(sample_f2)/(pnorm(sample_f2, 1.4,0.8)))#/1.6
+##calculating the varianz of f2
+var_f2 <- 1/n^2 * sum(((g(sample_f2)/(pnorm(sample_f1, 1.4,0.8)))- I_hat_MI2)^2)
+## result
+result_df_p5 <- data.frame(I_hat = c(I_hat_MI1,I_hat_MI2),
+                           var_I_hat = c(var_f1, var_f2))
+result_df_p5 %>% gt()
 ```
+
+6.  Usar el algoritmo de Metropolis-Hastings para generar variadas
+    aleatorias de una densidad Cauchy estándar. Descartar las primeras
+    1000 observaciones de la cadena, y comparar los deciles de las
+    observaciones generadas con los deciles de la distribución Cauchy
+    estándar. Recordar que una densidad Cauchy(θ,η) tiene densidad dada
+    por la siguiente función:
+
+    $f(x) = \frac {1}{\theta \pi (1 + [\frac{x-\nu}{\theta}]^2)}, x ∈ R, θ > 0$
+
+    La densidad Cauchy estándar tiene θ = 1, η = 0, y corresponden a la
+    densidad t con un grado de libertad.
+    
+    some info: https://www.youtube.com/watch?v=0lpT-yveuIA, https://www.youtube.com/watch?v=yCv2N7wGDCw, https://www.youtube.com/watch?v=yApmR-c_hKU&t=0s, https://www.youtube.com/watch?v=prZMpThbU3E&t=0s
+```{r}
+fcn_P6 <- function(x, nu, theta) {
+  den_f = theta*pi*(1+((x-nu)/theta)^2) 
+  f = 1/den_f
+  return(f)
+}
+N = 10000
+# 
+theta <- 1
+nu <- 0
+x <- seq(-10, 10, length.out = N)
+pdf_Cauchy_estandard <- fcn_P6(x, 0, 1)
+plt_df_p6 <- data.frame(x,
+                       y = fcn_P6(x, nu, theta))
+ggplot(plt_df_p6, aes(x=x, y=y))+
+  geom_line()
+
+
+```
+Since Cauchy distribution is symmetric, one can choose a normal distribution as $s(\theta)$ and $\frac{Q(\theta|\theta^*)}{Q(\theta^*|\theta)}=1$
+
+
+
+
+7. Implementar un muestreador de Metropolis de caminata aleatoria para generar muestras de
+una distribución estándar de Laplace:
+$f(x) = \frac{1}{2}e^{|x|)}, x ∈ R$
+Para el incremento, simula una normal estándar. Comparar las cadenas generadas cuando
+la distribución propuesta tiene diferentes varianzas. Calcular las tasas de aceptación de cada
+cadena.
 
