@@ -1,0 +1,77 @@
+---
+title: "Tarea 3 - MLG"
+format: pdf
+editor: visual
+authors: 
+  - "Blanca Garcia - 118886"
+  - "Yuneri Perez - 199813"
+  - "Thomas Rudolf - 169293"
+  - "Mariano Villafuerte - 156057"
+---
+
+```{r librerias, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(gt)
+```
+
+1.  Calcular el estimador de Monte Carlo de la integral\
+    $$
+    \int_{0}^{\frac{\pi}{3}} \sin(t) \, dt
+    $$\
+    y comparar el estimador con el valor exacto de la integral.
+
+Sabemos que la integral de $sin(t)$ tiene un valor exacto de $0.5$ con $t\in[0,\pi/3]$
+
+```{r}
+set.seed(156057)
+# variables
+f <- function(x)sin(x)
+N <- 10000
+
+# simulamos puntos
+tabla <- tibble(
+  y = runif(N,0,1),
+  x = runif(N,0,pi/3)) 
+
+# evaluamos si están en el área deseada y multiplicamos por
+# el area conocida
+integral <- tabla %>%
+  mutate(pertenece=(y<=f(x))) %>%
+  summarise(Area=mean(pertenece)*(pi/3))
+```
+
+```{r echo=FALSE}
+integral %>% gt()
+```
+
+{{< pagebreak >}}
+
+2.  Escribir una función para calcular el estimador de Monte Carlo de la función de distribución $Be (3, 3)$ y usar la función para estimar $F (x)$ para $x = 0.1, . . . , 0.9$. Comparar los estimados con los valores obtenidos con la función pbeta de R.
+
+Calculamos los verdaderos valores. Igual, simulamos de una $Beta(3,3)$ y calculamos proporciones.
+
+```{r}
+set.seed(156057)
+num_betas <- tibble(sim_x=rbeta(10000,3,3)) %>%
+  group_by()
+
+menores <- function(x, valor) {
+  sum(x <= valor) / length(x)
+}
+
+tabla <- tibble(x_val=seq(0.1, 0.9, by=0.1)) %>%
+  mutate(F_x=pbeta(x_val, shape1=3, shape2=3)) %>%
+  rowwise() %>%
+  mutate(monte_carlo = menores(num_betas$sim_x, x_val))
+```
+
+```{r echo=FALSE}
+tabla %>% gt()
+```
+
+{{< pagebreak >}}
+
+3.  Usar integración Monte Carlo para estimar:
+
+$$\int_{0}^{1} \frac{e^{-x}}{1 + x^2} \, dx$$
+y calcular el tamaño de muestra necesario para obtener un error de estimación máximo de $±0.001$.
