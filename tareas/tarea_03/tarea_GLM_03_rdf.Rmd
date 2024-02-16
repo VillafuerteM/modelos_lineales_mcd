@@ -49,6 +49,8 @@ ggplot(plt_df_p1,  aes(x=n, y=result_n)) +
   geom_hline(yintercept = (-cos(pi/3)+cos(0))) +
   geom_line(aes(x=n, y=upper), color = "red") +
   geom_line(aes(x=n, y=lower), color = "red")
+result_n[length(result_n)]
+
 ```
 
 ## Problema 2
@@ -229,22 +231,24 @@ mu_f <- 0
 var_f <- 1
 # start value:
 x <- 1
-var <- 0.4
-f_x <- dnorm(x, mu_f, var_f)
+#var <- 0.1
+f_x <- fcn_P6(x, 0,1)#dnorm(x, mu_f, var_f)
 x_vec <- c()
 
 for(idx in 1:N){
   
   x_new <- rnorm(1, mu_f, var_f)
-  f_x_new <- dnorm(x_new, mu_f, var_f)
-  score <- f_x_new/f_x
-  x_vec <- append(x_vec, (ifelse(runif(1)<score, x_new, x)))
+  f_x_new <- fcn_P6(x_new, 0,1)#dnorm(x_new, mu_f, var_f)
+  acceptance <- min(1, f_x_new/f_x)
+  compar_value = runif(1)
+  x_vec <- append(x_vec, ifelse(compar_value<acceptance, x_new, x))
+  f_x <- ifelse(compar_value<acceptance, f_x_new, f_x)
 }
 
 ## reject the first 1001 samples
 x_vec_result <- x_vec[1001:length(x_vec)]
 x_vec_result_sorted <- sort(x_vec_result)
-f_result_mcmc <- dnorm(x_vec_result_sorted, mu_f, var_f)
+f_result_mcmc <- fcn_P6(x_vec_result_sorted, 0,1)#dnorm(x_vec_result_sorted, mu_f, var_f)
 
 plt_df_p6_result <-  data.frame(x_mcmc = x_vec_result_sorted,
                                   f_result_mcmc = f_result_mcmc, 
@@ -270,8 +274,21 @@ result_deciles %>% gt()
 
 7. Implementar un muestreador de Metropolis de caminata aleatoria para generar muestras de
 una distribución estándar de Laplace:
-$f(x) = \frac{1}{2}e^{|x|)}, x ∈ R$
+$f(x) = \frac{1}{2}e^{-|x|}, x ∈ R$
 Para el incremento, simula una normal estándar. Comparar las cadenas generadas cuando
 la distribución propuesta tiene diferentes varianzas. Calcular las tasas de aceptación de cada
 cadena.
+```{r}
+fcn_P7 <- function(x){ return(0.5*exp(-abs(x)))
+}
+N <- 100000
+x = seq(-10,10, length.out=N)
+plt_df_P7 <- data.frame(x = x, 
+                        y = fcn_P7(x))
+ggplot(plt_df_P7, aes(x=x, y=y))+
+  geom_line()
+```
+```{r}
+
+```
 
