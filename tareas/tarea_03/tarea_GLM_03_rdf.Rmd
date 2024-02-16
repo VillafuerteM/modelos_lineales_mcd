@@ -201,29 +201,36 @@ result_df_p5 %>% gt()
 
     La densidad Cauchy estándar tiene θ = 1, η = 0, y corresponden a la
     densidad t con un grado de libertad.
-    
-    some info: https://www.youtube.com/watch?v=0lpT-yveuIA, https://www.youtube.com/watch?v=yCv2N7wGDCw, https://www.youtube.com/watch?v=yApmR-c_hKU&t=0s, https://www.youtube.com/watch?v=prZMpThbU3E&t=0s
-```{r}
-set.seed(123)
-fcn_P6 <- function(x, nu, theta) {
-  den_f = theta*pi*(1+((x-nu)/theta)^2) 
-  f = 1/den_f
-  return(f)
-}
-N = 10000
-# 
-theta <- 1
-nu <- 0
-x <- seq(-10, 10, length.out = N)
-pdf_Cauchy_estandard <- fcn_P6(x, 0, 1)
-plt_df_p6 <- data.frame(x,
-                       y = fcn_P6(x, nu, theta))
-ggplot(plt_df_p6, aes(x=x, y=y))+
-  geom_line()
+
+    some info: <https://www.youtube.com/watch?v=0lpT-yveuIA>,
+    <https://www.youtube.com/watch?v=yCv2N7wGDCw>,
+    <https://www.youtube.com/watch?v=yApmR-c_hKU&t=0s>,
+    <https://www.youtube.com/watch?v=prZMpThbU3E&t=0s>
+
+    ```{r}
+    set.seed(123)
+    fcn_P6 <- function(x, nu, theta) {
+      den_f = theta*pi*(1+((x-nu)/theta)^2) 
+      f = 1/den_f
+      return(f)
+    }
+    N = 10000
+    # 
+    theta <- 1
+    nu <- 0
+    x <- seq(-10, 10, length.out = N)
+    pdf_Cauchy_estandard <- fcn_P6(x, 0, 1)
+    plt_df_p6 <- data.frame(x,
+                           y = fcn_P6(x, nu, theta))
+    ggplot(plt_df_p6, aes(x=x, y=y))+
+      geom_line()
 
 
-```
-Since Cauchy distribution is symmetric, one can choose a normal distribution as $s(\theta)$ and $\frac{Q(\theta|\theta^*)}{Q(\theta^*|\theta)}=1$
+    ```
+
+    Since Cauchy distribution is symmetric, one can choose a normal
+    distribution as $s(\theta)$ and
+    $\frac{Q(\theta|\theta^*)}{Q(\theta^*|\theta)}=1$
 
 ```{r}
 # definition of normal distribution parameters: mu = 0, var = 1
@@ -261,8 +268,8 @@ ggplot(plt_df_p6_result) +
 
 # deciles
 result_deciles <- data.frame(decile_perc =seq(0,1, by=0.1)*100,
-                             dec_fcn_cauchy = quantile(plt_df_p6$y, probs=seq(0,1, by=0.1)), 
-                             dec_fcn_mcmcm = quantile(plt_df_p6_result$f_result_mcmc, probs=seq(0,1, by=0.1)) )
+                             dec_mcmc = quantile(x_vec_result, probs=seq(0,1, by=0.1)), 
+                             dec_couchy = quantile(rcauchy(length(x_vec_result)), probs=seq(0,1, by=0.1)) )
 
 result_deciles %>% gt()
 
@@ -270,14 +277,13 @@ result_deciles %>% gt()
 
 ```
 
+7.  Implementar un muestreador de Metropolis de caminata aleatoria para
+    generar muestras de una distribución estándar de Laplace:
+    $f(x) = \frac{1}{2}e^{-|x|}, x ∈ R$ Para el incremento, simula una
+    normal estándar. Comparar las cadenas generadas cuando la
+    distribución propuesta tiene diferentes varianzas. Calcular las
+    tasas de aceptación de cada cadena.
 
-
-7. Implementar un muestreador de Metropolis de caminata aleatoria para generar muestras de
-una distribución estándar de Laplace:
-$f(x) = \frac{1}{2}e^{-|x|}, x ∈ R$
-Para el incremento, simula una normal estándar. Comparar las cadenas generadas cuando
-la distribución propuesta tiene diferentes varianzas. Calcular las tasas de aceptación de cada
-cadena.
 ```{r}
 fcn_P7 <- function(x){ return(0.5*exp(-abs(x)))
 }
@@ -288,7 +294,13 @@ plt_df_P7 <- data.frame(x = x,
 ggplot(plt_df_P7, aes(x=x, y=y))+
   geom_line()
 ```
+
 ```{r}
-
+sample_mcmc_generator <- funcion(x, incr_mu=0, incr_var=1, inter){
+  samples <- numeric(iter)
+  candidate <- 0
+  for (idx in 1:iter){
+    
+  }
+}
 ```
-
