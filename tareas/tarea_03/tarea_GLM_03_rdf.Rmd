@@ -236,13 +236,13 @@ f_x <- fcn_P6(x, 0,1)#dnorm(x, mu_f, var_f)
 x_vec <- c()
 
 for(idx in 1:N){
-  
-  x_new <- rnorm(1, mu_f, var_f)
+  x_new <- x + rnorm(1, mu_f, var_f)
   f_x_new <- fcn_P6(x_new, 0,1)#dnorm(x_new, mu_f, var_f)
   acceptance <- min(1, f_x_new/f_x)
   compar_value = runif(1)
   x_vec <- append(x_vec, ifelse(compar_value<acceptance, x_new, x))
   f_x <- ifelse(compar_value<acceptance, f_x_new, f_x)
+  x <- x_vec[length(x_vec)]
 }
 
 ## reject the first 1001 samples
@@ -255,8 +255,8 @@ plt_df_p6_result <-  data.frame(x_mcmc = x_vec_result_sorted,
                                 fcn_P6_result = fcn_P6(x_vec_result_sorted, nu, theta))
 
 ggplot(plt_df_p6_result) +
-  geom_line(aes(x=x_mcmc, y = f_result_mcmc), colour = "red") +
-  geom_line(aes(x=x_mcmc, y = fcn_P6_result), colour = "black")
+  geom_histogram(aes(x=x_mcmc)) +
+  geom_line(aes(x=x_mcmc, y = fcn_P6_result), colour = "red")
 
 
 # deciles
