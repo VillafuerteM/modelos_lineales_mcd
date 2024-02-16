@@ -34,7 +34,7 @@ sol_anlitica = -cos(pi/3) +cos(0)
 
 ## solución MCMC
 
-num_samples = 10000
+num_samples = 100000
 h <- function(t){sin(t)}
 n_samples <- h(runif(num_samples, 0, pi/3))
 result_n <- cumsum(n_samples)/(1:num_samples)
@@ -202,6 +202,7 @@ result_df_p5 %>% gt()
     
     some info: https://www.youtube.com/watch?v=0lpT-yveuIA, https://www.youtube.com/watch?v=yCv2N7wGDCw, https://www.youtube.com/watch?v=yApmR-c_hKU&t=0s, https://www.youtube.com/watch?v=prZMpThbU3E&t=0s
 ```{r}
+set.seed(123)
 fcn_P6 <- function(x, nu, theta) {
   den_f = theta*pi*(1+((x-nu)/theta)^2) 
   f = 1/den_f
@@ -222,6 +223,48 @@ ggplot(plt_df_p6, aes(x=x, y=y))+
 ```
 Since Cauchy distribution is symmetric, one can choose a normal distribution as $s(\theta)$ and $\frac{Q(\theta|\theta^*)}{Q(\theta^*|\theta)}=1$
 
+```{r}
+# definition of normal distribution parameters: mu = 0, var = 1
+mu_f <- 0
+var_f <- 1
+# start value:
+x <- 1
+var <- 0.4
+f_x <- dnorm(x, mu_f, var_f)
+x_vec <- c()
+
+for(idx in 1:N){
+  
+  x_new <- rnorm(1, mu_f, var_f)
+  f_x_new <- dnorm(x_new, mu_f, var_f)
+  score <- f_x_new/f_x
+  x_vec <- append(x_vec, (ifelse(runif(1)<score, x_new, x)))
+}
+
+## reject the first 1001 samples
+x_vec_result <- x_vec[1001:length(x_vec)]
+x_vec_result_sorted <- sort(x_vec_result)
+f_result_mcmc <- dnorm(x_vec_result_sorted, mu_f, var_f)
+
+plt_df_p6_result <-  data.frame(x_mcmc = x_vec_result_sorted,
+                                  f_result_mcmc = f_result_mcmc, 
+                                fcn_P6_result = fcn_P6(x_vec_result_sorted, nu, theta))
+
+ggplot(plt_df_p6_result) +
+  geom_line(aes(x=x_mcmc, y = f_result_mcmc), colour = "red") +
+  geom_line(aes(x=x_mcmc, y = fcn_P6_result), colour = "black")
+
+
+# deciles
+result_deciles <- data.frame(decile_perc =seq(0,1, by=0.1)*100,
+                             dec_fcn_cauchy = quantile(plt_df_p6$y, probs=seq(0,1, by=0.1)), 
+                             dec_fcn_mcmcm = quantile(plt_df_p6_result$f_result_mcmc, probs=seq(0,1, by=0.1)) )
+
+result_deciles %>% gt()
+
+  
+
+```
 
 
 
