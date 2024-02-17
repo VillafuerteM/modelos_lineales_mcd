@@ -296,11 +296,45 @@ ggplot(plt_df_P7, aes(x=x, y=y))+
 ```
 
 ```{r}
-sample_mcmc_generator <- funcion(x, incr_mu=0, incr_var=1, inter){
+sample_mcmc_generator <- function(incr_mu=0, incr_var=1, iter=10000){
   samples <- numeric(iter)
-  candidate <- 0
+  accept_count <- array(0,dim=iter)
+  current_sample <- 0
   for (idx in 1:iter){
-    
+    # calculate new candiate
+    cantidate <- current_sample +rnorm(1, incr_mu, incr_var)
+    # calculate new acceptance value
+    acceptance_ratio <- fcn_P7(cantidate)/fcn_P7(current_sample) 
+    # make decision
+    if(runif(1)<acceptance_ratio){
+      current_sample <- cantidate
+      accept_count[idx] <- 1
+    }
+    samples[idx] <- current_sample
   }
+  df_generator <- data.frame(mcmc_samples = samples, 
+                             accept_count = accept_count, 
+                             used_var = incr_var)
+  return(df_generator)
 }
 ```
+
+Evaluate different variances
+```{r}
+num_2_eval <- 30
+var_vec <- seq(0.1, 10, length.out= num_2_eval)
+accept_perc <- numeric(num_2_eval)
+idx = 1
+for(var_eval in var_vec){
+  #print(var_eval)
+  tmp_df <- sample_mcmc_generator(0, var_eval, N)
+  accept_perc[idx] <- sum(tmp_df$accept_count/length(tmp_df$accept_count))
+  idx <- idx+1
+}
+plt_df_P7_result <- data.frame( var_vec, 
+                               accept_perc)
+ggplot(plt_df_P7_result, aes(x=var_vec,  y=accept_perc))+
+  geom_bar(stat="identity", fill="skyblue", color="black") 
+
+```
+
