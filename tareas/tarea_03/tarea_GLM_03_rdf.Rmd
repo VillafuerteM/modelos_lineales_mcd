@@ -334,7 +334,8 @@ for(var_eval in var_vec){
 plt_df_P7_result <- data.frame( var_vec, 
                                accept_perc)
 ggplot(plt_df_P7_result, aes(x=var_vec,  y=accept_perc))+
-  geom_bar(stat="identity", fill="skyblue", color="black") 
+  geom_bar(stat="identity", fill="skyblue", color="black") +
+  labs(title = "MH with different variances", x="variances", y="acceptance rate in %")
 
 ```
 
