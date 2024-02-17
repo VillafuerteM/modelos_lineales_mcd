@@ -302,12 +302,12 @@ sample_mcmc_generator <- function(incr_mu=0, incr_var=1, iter=10000){
   current_sample <- 0
   for (idx in 1:iter){
     # calculate new candiate
-    cantidate <- current_sample +rnorm(1, incr_mu, incr_var)
+    candidate <- current_sample +rnorm(1, incr_mu, incr_var)
     # calculate new acceptance value
-    acceptance_ratio <- fcn_P7(cantidate)/fcn_P7(current_sample) 
+    acceptance_ratio <- fcn_P7(candidate)/fcn_P7(current_sample) 
     # make decision
     if(runif(1)<acceptance_ratio){
-      current_sample <- cantidate
+      current_sample <- candidate
       accept_count[idx] <- 1
     }
     samples[idx] <- current_sample
@@ -338,4 +338,64 @@ ggplot(plt_df_P7_result, aes(x=var_vec,  y=accept_perc))+
   labs(title = "MH with different variances", x="variances", y="acceptance rate in %")
 
 ```
+
+
+8.) Desarrollar un algoritmo de Metropolis-Hastings para muestrear de la distribución siguiente:
+|------|------|------|------|-------|-----|
+| 1    | 2    |3     | 4    | 5     |6    |
+|------|------|------|------|-------|-----|
+| 0.01 | 0.39 | 0.11 | 0.18 | 0.26  | 0.05|
+
+con distribución propuesta basada en un dado honesto.
+
+```{r}
+p_dist <- c(0.01, 0.39, 0.11, 0.18, 0.26, 0.05)
+x <- c(1, 2, 3, 4, 5, 6)
+p_honest <- 1/6
+fcn_P8 <- function(init_state, iter){
+  current_state <- init_state
+  mcmc_samples <- c(current_state)
+  for(idx in 1:iter){
+    # get a candidate
+    candidate <- sample(1:6, 1)
+    # calculate the acceptance
+    acceptance_ratio <- min(1, p_dist[candidate]/p_dist[current_state])
+    if(runif(1)<acceptance_ratio){
+      current_state <- candidate
+    }
+    mcmc_samples <- append(mcmc_samples, current_state)
+  }
+  return(mcmc_samples)
+}
+```
+
+Evaluate
+```{r}
+sample_P8 <- fcn_P8(1, 1000)
+p_mcmc <- c(length(which(sample_P8==1)), 
+            length(which(sample_P8==2)), 
+            length(which(sample_P8==3)), 
+            length(which(sample_P8==4)),
+            length(which(sample_P8==5)), 
+            length(which(sample_P8==6)))/1000
+df_result_P8 <- data.frame(dice_num = seq(1,6),
+                           p_dist, 
+                           p_mcmc)
+df_result_P8 %>% gt()
+```
+
+
+
+9. La sucesión de Fibonacci 1, 1, 2, 3, 5, 8, 13, . . . es descrita por la recurrencia $f_n = f_{n−1} + f_{n−2}$,para n ≥ 3 con $f_1 = f_2 = 1$
+
+a. Mostrar que el número de sucesiones binarias de longitud m sin 1’s adyaentes es fm+2
+b. Sea pk,m el número de buenas sucesiones de longitud m con exactamente k 1’s. Mostrar
+que
+pk,m =
+
+m − k + 1
+k
+
+, k = 0, 1, . . . , ceiling(m/2)
+c. Sea µm el número esperados de 1’s en una buena sucesión de longitud m bajo la distribución uniforme. Encontrar µm para m = 10, 100, 1000.
 
