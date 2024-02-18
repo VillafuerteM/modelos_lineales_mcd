@@ -1,0 +1,429 @@
+---
+title: "Tarea 3 - Modelos Lineales Generalizados"
+authors: "Blanca E. García Manjarrez – 118886 Mariano Villafuerte Gonzalez – 156057
+  Thomas M. Rudolf - 169293 Yuneri Pérez Arellano - 199813"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(gt)
+library(ggplot2)
+library(MASS)
+```
+
+![](ITAM.png)
+
+Fecha de entrega: 21 de febrero 2024.
+
+-   Blanca E. García Manjarrez -- 118886
+-   Mariano Villafuerte Gonzalez -- 156057
+-   Thomas M. Rudolf - 169293
+-   Yuneri Pérez Arellano - 199813
+
+1.  Calcular el estimador de Monte Carlo de la integral
+    $$\int_0^\frac{\pi}{3} \mathrm{sin}{(t)}\,\mathrm{d}t$$ y comparar
+    el estimador con el valor exacto de la integral.
+
+> El estimador de Monte Carlo es
+> $$(b-a)\int_{a}^{b} g(x) \cdot dx = \frac{\pi}{3}\left\lbrace\frac{1}{m}\sum_{i=1}^{m} \mathrm{sin}{(u)}\right\rbrace$$
+> donde $u$ es generada a partir de una $U(0,\frac{\pi}{3})$
+
+```{r}
+# Definir la función a integrar
+set.seed(123) 
+f_seno <- function(t) sin(t)
+a <- 0
+b <- (pi/3)
+
+# Número de muestras para el método de Monte Carlo
+n <- 100000
+
+y <- replicate(1000, expr = {
+  x <- runif(n, 0, pi/3)
+  theta.hat <- pi/3 * mean(sin(x))
+  })
+
+# Valor exacto de la integral
+integral <- integrate(f_seno, a, b)$value
+
+# Mostrar los resultados
+compara <- data.frame(Integral = integral,Est_MonteCarlo = mean(y))
+compara |> gt() |> fmt_number(decimals = 6)
+```
+
+2.  Escribir una función para calcular el estimador de Monte Carlo de la
+    función de distribución $Beta(3,3)$ y usar la función para estimar
+    $F(x)$ para $x = 0.1, . . . , 0.9$. Comparar los estimados con los
+    valores obtenidos con la función 'pbeta' de 'R'.
+
+> Derivado de la relación matemática que existe entre la distribución
+> $Gamma$ y la $Beta$, se puede llegar a que la proporción de dos
+> variables $Gamma$ independientes sigue una distribución $Beta$. Este
+> enfoque permite utilizar propiedades conocidas de las distribuciones
+> $Gamma$ para generar muestras eficientemente y estimar la distribución
+> $Beta$. Con base en lo anterior, se tiene que: $$u \sim Gamma(a,1)$$
+> $$v \sim Gamma(b,1)$$ entonces la variable aleatoria
+> $$Y = \frac{u}{u+v} \sim Beta(a,b)$$
+
+```{r}
+set.seed(123)
+mcBeta <- function(x, a, b, n = 10000) {
+  u <- rgamma(n, a, 1)
+  v <- rgamma(n, b, 1)
+  mean(u / (u + v) <= x)
+}
+
+x <- seq(0.1, 0.9, 0.1)
+p <- sapply(x, mcBeta, a = 3, b = 3)
+
+resultados <- data.frame(
+  x = x,
+  pBetaR = pbeta(x, 3, 3),
+  mcBeta_est = p
+)
+resultados |> gt() |> fmt_number(decimals = 4)
+
+```
+
+3.  Usar integración Monte Carlo para estimar:
+    $$\int_0^1 \frac{e^{-x}}{1+x^2}dx$$
+
+y calcular el tamaño de muestra necesario para obtener un error de
+estimación máximo de $\pm0.001$
+
+```{r warning=FALSE}
+set.seed(123)
+n <- 10000
+u <- runif(n)
+
+g <- Vectorize(function(x) exp(-x)/(1+x^2))
+y <- g(u)
+mc3 <- mean(y)
+integral3 <- integrate(g, 0, 1)$value
+
+# Definimos el error de estimación máximo como:
+error_n <- numeric(n) 
+for(i in 1:n){ 
+  error_n[i] <- mean(y[1:i]) - integral3 
+}
+
+resultados3 <- data.frame(error = error_n)
+ggplot(resultados3, aes(x = seq_along(error), y = error)) +
+  geom_line() +
+  ylim(-0.0015, 0.0015) +
+  geom_hline(yintercept = c(-0.001, 0.001), linetype = "dashed", color = "red") +
+  theme_minimal() +
+  labs(y = "Error", x = "Tamaño de muestra") +
+  theme(panel.grid = element_line(color = 'steelblue',
+                                  linetype = 2))
+```
+
+```{r}
+set.seed(123)
+# Función a integrar
+f <- function(x) exp(-x) / (1 + x^2)
+integral_exacta <- integrate(f, 0, 1)$value
+error_maximo <- 0.001
+
+# Inicializar variables
+n_muestra <- 10
+error_estimado <- Inf
+
+while (error_estimado > error_maximo) {
+  muestras <- runif(n_muestra)
+  estimacion_monte_carlo <- mean(f(muestras))
+  error_estimado <- abs(integral_exacta - estimacion_monte_carlo)
+  n_muestra <- n_muestra + 10
+}
+
+cat("Tamaño de muestra necesario:", n_muestra, "\n")
+cat("Estimación de la integral:", estimacion_monte_carlo, "\n")
+cat("Error de estimación:", error_estimado, "\n")
+
+```
+
+4.  Sea $\hat\theta_{IS}$ el estimador de importancia de
+    $$\theta = \int g(x)dx$$ donde la función de importancia $f$ es una
+    densidad. Probar que si $g(x)/f(x)$ es acotada, entonces la varianza
+    del estimador de muestreo por importancia $\hat \sigma_{IS}$ es
+    finita.
+
+> Suponga que $f$ es una función de densidad,
+> $$\theta=\int g(x)dx < \infty,$$ y
+> $$\left|\frac{g(x)}{f(x)}\right| \leq M < \infty.$$ Sea
+> $\hat\theta=\hat\theta_{IS}$ entonces:
+> $$Var(\hat{\theta})=E[\hat{\theta^2}]-(E[\hat{\theta}])^2$$
+> $$=E\left[\frac{1}{m}\sum_{i=1}^{m}\left(\frac{g(X_i)}{f(X_i)}\right)^2f(X_i)\right]-\theta^2$$
+> $$\int \frac{g(x)^2}{f(x)}dx-\theta^2$$
+> $$=\int \frac{g(x)}{f(x)}g(x)dx-\theta^2 \le M \int g(x)dx -\theta^2$$
+> $$=M \theta-\theta^2 < \infty$$
+
+5.  Encontrar dos funciones de importancia $f_1$ y $f_2$ que tengan
+    soporte en $(1, \infty)$ y estén "cerca" de:
+    $$g(x)= \frac{x^2}{\sqrt{2\pi}} e^{-{x^2}/2}, \qquad x<1$$ ¿Cuál de
+    las dos funciones de importancia debe producir la varianza más
+    pequeña para estimar la integral siguiente por muestreo de
+    importancia?
+    $$\int_{1}^{\infty} \frac{x^2}{\sqrt{2\pi}} e^{-{x^2}/2} \,dx$$
+    \>Graficamos $g(x)$
+
+```{r}
+x <- seq(1, 10, 0.01)
+y <- x^2 * exp(-x^2/2)/sqrt(2 * pi)
+ 
+df <- data.frame(x = x, y = y)
+ 
+ggplot(df, aes(x, y)) +
+  geom_line(linetype = "solid", color = "steelblue1", size = 1.5) +
+  geom_line(aes(y = 2 * dnorm(x, 1)), linetype = "dashed", color = "steelblue3", size = 1.5) +
+  geom_line(aes(y = dgamma(x - 1, 3/2, 2)), linetype = "dotted",  color = "steelblue4", size = 1.5) +
+  ylim(0, 1) +
+  labs(title = "Funciones g(x), f1, y f2")  +
+  theme(legend.position = "top") +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted"),
+                        name = "Leyenda",
+                        labels = c("g(x)", "f1", "f2"))
+```
+
+> $f_1$ es un variable $\chi(1)$ con $x>1$ por lo que $f_1$ es le doble
+> de la densidad de la $N(1,1)$. Y $f_2$ considera una $Gamma$ con
+> $x>1$. Ambas $f_1$ y $f_2$ satisfacen que el soporte este entre
+> $(1, \infty)$.
+
+> Por otro lado, como podemos observar en la gráfica podemos considerar
+> que la función de importancia Normal produzca la varianza más pequeña
+> al estimar la integral, porque la relación $\frac{g(x)}{f(x)}$ está
+> más cerca de una función constante.
+
+```{r}
+x <- seq(1, 10, 0.01)
+y <- x^2 * exp(-x^2/2)/sqrt(2 * pi)
+ 
+df <- data.frame(x = x, 
+                 f1 = y/(dgamma(x - 1, 3/2, 2)), 
+                 f2 = y/(2 * dnorm(x, 1)))
+ 
+ggplot(df, aes(x)) +
+  geom_line(aes(y = f1), linetype = "dotted", size = 1.5, color = "steelblue1") +
+  geom_line(aes(y = f2), linetype = "dashed", size = 1.5, color = "steelblue4") +
+  labs(title = "Funciones f1 y f2") +
+theme(legend.position = "right",  
+        plot.margin = margin(r = 5)) +
+  scale_linetype_manual(values = c("dotted", "dashed"),
+                        name = "Funciones",
+                        labels = c("f1", "f2")) +
+  guides(linetype = guide_legend(title = "Leyenda"))
+ 
+```
+
+6.Usar el algoritmo de Metropolis-Hastings para generar variadas
+aleatorias de una densidad Cauchy estándar. Descartar las primeras 1000
+observaciones de la cadena, y comparar los deciles de las observaciones
+generadas con los deciles de la distribución Cauchy estándar. Recordar
+que una densidad $Cauchy(\theta,\eta)$ tiene densidad dada por la
+siguiente función: $$f(x)=\frac{1}{\theta\pi(1+[(x-\eta)/\theta]^2)},$$
+$$x\epsilon\mathbb{R},\theta>0$$ La densidad Cauchy estándar tiene
+$\theta$ = 1, $\eta$ = 0, y corresponden a la densidad t con un grado de
+libertad.
+
+> La siguiente cadena usa la distribución propuesta de
+> $N(\mu_t,\sigma^2)$, donde $\mu_t=X_t$ es el valor previo de la
+> cadena. Entonces: $$r(x_t,y)=\frac{f(y)g(x_t|y)}{f(x_t)g(y|x_t)}$$
+> $$\frac{(1+x_t^2)\pi\sqrt{2\pi}\sigma e^{-(x_t-y)^2/(2\sigma^2)}}{(1+y^2)\pi \sqrt{2\pi}\sigma e^{-(y-x_t)^2/(2\sigma^2)}}$$
+> $$=\frac{1+x_t^2}{1+y^2}$$
+
+```{r}
+n <- 10000
+sigma <- 3
+x <- numeric(n)
+
+x[1] <- rnorm(1, 0, sigma)
+k <- 0
+u <- runif(n)
+
+for (i in 2:n) {
+  xt <- x[i - 1]
+  y <- rnorm(1, xt, sigma)
+  num <- 1 + xt^2
+  den <- 1 + y^2
+  num <- num * dnorm(xt, y)
+  den <- den * dnorm(y, xt)
+  if (u[i] <= num/den)
+    x[i] <- y
+  else {
+    x[i] <- xt
+    k <- k + 1}
+  }
+
+kdf <- data.frame(Rechazos = k)
+kdf |> gt() |> fmt_number(decimals = 0, sep_mark = ",")
+```
+
+```{r}
+# Cuantiles y comparación con la distribución cauchy
+p <- seq(0.1, 0.9, 0.1)
+burn <- 1000
+xb <- x[(burn + 1):n]
+Q <- quantile(xb, p)
+QCau <- qcauchy(p)
+
+resultados6 <- data.frame(p = p, Cuantiles_Est = Q, Cuantiles_Cauchy = QCau)
+resultados6 |> gt() |> fmt_number(decimals = 3)
+```
+
+```{r}
+p62 <- seq(0.95, 1, 0.01)
+Q62 <- quantile(xb, p62)
+
+resultados62 <- data.frame(p = p62, Cuantiles_Est = Q62, Cuantiles_Cauchy = qcauchy(p62))
+resultados62 |> gt() |> fmt_number(decimals = 3)
+```
+
+7.  Implementar un muestreador de Metrópolis de caminata aleatoria para
+    generar muestras de una distribución estándar de Laplace:
+    $$f(x)= \frac{1}{2} e^{-\|x\|}, \\qquad x \in \mathbb{R}$$ Para el
+    incremento, simula una normal estándar. Comparar las cadenas
+    generadas cuando la distribución propuesta tiene diferentes
+    varianzas. Calcular las tasas de aceptación de cada cadena. Sea la
+    distribución estándar de Laplace $$f(x)= \frac{1}{2} e^{-|x|}$$ y
+    $$r(x_t,y)=\frac{f(y)}{f(x_t)}=\frac{e^{-|y|}}{e^{-|x_t|}}=e^{|x_t|-|y|} $$
+
+```{r}
+rw.Laplace <- function(N, x0, sigma) {
+  # N es el largo de la cadena
+  # x0 es valor inicial
+  # sigma es desv. est. de la normal propuesta
+  x <- numeric(N)
+  x[1] <- x0 
+  u <- runif(N)
+  k<-0
+#A cada paso, el punto propuesto se genera con una normal  #(xt, sigma^2)
+  for (i in 2:N) {
+    xt <- x[i - 1] # valor anterior en la cadena
+    y <- rnorm(1, xt, sigma)
+    if (u[i] <= exp(abs(xt) - abs(y)))
+      x[i] <- y
+    else {
+      x[i] <- x[i - 1]
+      k<-k+1
+    }
+  }
+  return(list(x=x, k= k)) # El valor de retorno es una lista que contiene la cadena generada x y el número de puntos rechazados k
+}
+ 
+N <- 5000
+sigma <- c(0.5, 1, 2, 4) 
+x0 <- rnorm(1)
+rw1 <- rw.Laplace(N, x0, sigma[1])
+rw2 <- rw.Laplace(N, x0, sigma[2])
+rw3 <- rw.Laplace(N, x0, sigma[3])
+rw4 <- rw.Laplace(N, x0, sigma[4])
+print(c(rw1$k, rw2$k, rw3$k, rw4$k))
+```
+
+```{r}
+cat("Tasas de aceptación ", (c(rw1$k, rw2$k, rw3$k, rw4$k)/N),"\n")
+```
+
+```{r}
+b<-100
+y1 <- rw1$x[(b + 1):N]
+y2 <- rw2$x[(b + 1):N]
+y3 <- rw3$x[(b + 1):N]
+y4 <- rw4$x[(b + 1):N]
+ 
+# Comparación gráfica de las cadenas
+par(mfrow = c(2, 2))
+plot(rw1$x, type = "l")
+plot(rw2$x, type = "l")
+plot(rw3$x, type = "l")
+plot(rw4$x, type = "l")
+par(mfrow = c(1, 1))
+```
+
+```{r}
+par(mfrow = c(2,2))
+p <- ppoints(200)
+y <- qexp(p, 1)
+z <- c(-rev(y), y)
+fx <- 0.5 * exp(-abs(z))
+hist(y1, breaks = "Scott", freq = FALSE, ylim = c(0,+ 0.5))
+lines(z, fx)
+hist(y2, breaks = "Scott", freq = FALSE, ylim = c(0,+ 0.5))
+lines(z, fx)
+hist(y3, breaks = "Scott", freq = FALSE, ylim = c(0,+ 0.5))
+lines(z, fx)
+hist(y4, breaks = "Scott", freq = FALSE, ylim = c(0,+ 0.5))
+lines(z, fx)
+par(mfrow = c(1, 1))
+ 
+par(mfrow = c(2, 2))
+Q1 <- quantile(y1, p)
+qqplot(z, Q1, cex = 0.4)
+abline(0, 1)
+Q2 <- quantile(y2, p)
+qqplot(z, Q2, cex = 0.4)
+abline(0, 1)
+Q3 <- quantile(y3, p)
+qqplot(z, Q3, cex = 0.4)
+abline(0, 1)
+Q4 <- quantile(y4, p)
+qqplot(z, Q4, cex = 0.4)
+abline(0, 1)
+par(mfrow = c(1, 1))
+```
+
+Según las gráficas anteriores, se descarta de cada cadena una pequeña
+muestra preliminar de tamaño 100. Cada una de las cadenas parece haber
+convergido hacia la distribución de Laplace objetivo. Las cadenas 2 y 3
+correspondientes a $σ=1,2$ tienen los mejores ajustes según los gráficos
+qqplot. La segunda cadena es la más eficiente de estas dos.
+
+8.  Desarrollar un algoritmo de Metropolis-Hastings para muestrear de la
+    distribución siguiente:
+
+    |      |      |      |      |      |      |
+    |------|------|------|------|------|------|
+    | 1    | 2    | 3    | 4    | 5    | 6    |
+    | 0.01 | 0.39 | 0.11 | 0.18 | 0.26 | 0.05 |
+
+con distribución propuesta basada en un dado honesto.
+
+```{r}
+### Pre Run ###
+trials <- 1000 #Run 100000 Markov steps
+x <- numeric(trials) #Create numeric objects of size trials
+accepted <- 0 #Number of accpeted steps, starts at 0
+rejected <- 0 #Number of rejected steps, starts at 0
+
+### MCMC ###
+pi <- c(0.01,0.39,0.11,0.18,0.26,0.05) # Weighted die distribution
+
+#Take a regular die, roll it once, the result is the starting
+#point
+x[1] <- sample(c(1:6),1) 
+
+for(i in 2:trials){
+  current <- x[i-1] #pi_i
+  proposed <- sample(c(1:6), 1) #pi_i
+  A <- pi[proposed]/pi[current] #a(i,j)
+  if(runif(1) <= A){ #If accepted, move to x_j 
+    #and accepted steps increase by one
+    x[i] <- proposed
+    accepted <- accepted + 1
+  }
+  else{ #If rejected, stay at x_i and rejected increases
+    x[i] <- current
+    rejected <- rejected + 1
+  }
+}
+
+
+```
