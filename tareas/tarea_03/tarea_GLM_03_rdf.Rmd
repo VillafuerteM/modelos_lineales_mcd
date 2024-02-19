@@ -30,7 +30,7 @@ y comparar el estimador con el valor exacto de la integral.
 ```{r}
 ## solución analitica
 ## integral de sin(t) es -cos(t)
-sol_anlitica = -cos(pi/3) +cos(0)
+sol_anlitica = -cos(pi/3) + cos(0)
 
 ## solución MCMC
 
@@ -49,7 +49,10 @@ ggplot(plt_df_p1,  aes(x=n, y=result_n)) +
   geom_hline(yintercept = (-cos(pi/3)+cos(0))) +
   geom_line(aes(x=n, y=upper), color = "red") +
   geom_line(aes(x=n, y=lower), color = "red")
-result_n[length(result_n)]
+
+df_result_P1 <- data.frame(analitic_value = sol_anlitica, 
+                           mc_value = result_n[length(result_n)])
+df_result_P1 %>% gt()
 
 ```
 
@@ -76,73 +79,105 @@ g2 <- ggplot(plt_df_p2, aes(x=n, y= beta_dist))+
 n_samples <- rbeta(num_sample, a,b)
 ## calculate I_hat 
 I_hat <- sum(n_samples)/length(n_samples)
-## vairanz asimtotic
+## variance
 var_I_hat <- sum((n_samples-I_hat)^2)/length(n_samples)
 # estimator MC
-estim_MC_p2 <- dnorm(seq(0,1, length.out=num_sample ),I_hat,  sqrt(var_I_hat) )
+x = seq(0.1,0.9, 0.1)
+estim_MC_p2 <- pnorm(seq(0.1,0.9, 0.1 ),I_hat,  sqrt(var_I_hat) )
+comp_pbeta <- pbeta(x, a,b)
+plt_df_P2_result <- data.frame(estim_MC_p2, comp_pbeta, x)
 
-plt_df_p2 <- plt_df_p2 %>% mutate(estim_MC_p2)
+plt_df_P2_result %>%gt()
 
-g2 <- g2 + geom_line(aes(x=n, y = estim_MC_p2), color = "red")
-g2
-
+ggplot(plt_df_P2_result)+
+  geom_line(aes(x=x, y= estim_MC_p2), colour="red")+
+  geom_line(aes(x=x, y=comp_pbeta), colour="blue")
+  
 
 ```
 
-3.  Usar integración Monte Carlo para estimar:
+##Problema 3 Usar integración Monte Carlo para estimar:
 
-    $\int_0^1 \frac{e^{-x}}{1+x^2}dx$
+```         
+$\int_0^1 \frac{e^{-x}}{1+x^2}dx$
+```
 
 y calcular el tamaño de muestra necesario para obtener un error de
 estimación máximo de ±0.001
 
 ```{r}
+set.seed(123)
 N <- 1000
 err_estim_max <- 0.001
 h <- function(x){
   return(exp(-x)/(1+x^2))
 }
-x <- seq(0,1, length.out = N)
-Int <- cumsum(h(x))/(1:N)
-var_n <- sqrt((x-Int)^2)/(1:N)
+x1 <- runif(N)
+IntMC <- cumsum(h(x1))/(1:N)
+sd_n <- sqrt((x1-IntMC)^2)/(1:N)
+#Analytically solved o integral
+sol_analytically <- integrate(h, 0, 1)$value
 
-# find the first value that fulfils err_estim_max
-min_num_samples <- which(var_n < err_estim_max)[1]
-plt_df_p3 <- data.frame(x = x, 
-                        y = Int, 
-                        fcn=h(x))
-ggplot(plt_df_p3, aes(x=x, y=y)) +
-  geom_line() +
-  geom_line(aes(x=x, y=fcn), color="red")
+# find the first value that fulfills 
+err_n <- IntMC - sol_analytically
 
-print("tamaño de muestra necesario:")
-print(min_num_samples)
+plt_df_p3 <- data.frame(x = seq(1:N), 
+                        y = IntMC, 
+                        fcn=h(x1),
+                        err_n = err_n)
+ggplot(plt_df_p3) +
+  geom_hline(yintercept = c(err_estim_max, -err_estim_max), colour="red") +
+  geom_line(aes(x=x, y=err_n), color="blue")+
+  ylim(-0.0015, 0.0015)
+
 
 
   
 ```
 
-4.  Sea $\hat{\theta}_{IS}$ el estimador de importancia de
-    $\theta = \int g(x) dx$, donde la función de importancia $f$ es una
-    densidad. Probar que si $g(x)/f(x)$ es acotada, entonces la varianza
-    del estimador de muestreo por importancia $\hat{\sigma}_IS$ es
-    finita.
+```{r}
+err <- numeric(100)
+#estimate max number of samples
+set.seed(12)
+num_of_sample <- 10
+err_estim <- Inf
+err_requ <- 0.001
 
-5.  Encontrar dos funciones de importancia f1 y f2 que tengan soporte en
-    (1, ∞) y estén ‘cerca’ de:
-    $g(x) = \frac{x^2}{\sqrt{2\pi}} e^{\frac{-x^2}{2}}$, x \> 1
+while(abs(err_estim) > err_requ){
+  n_samples <- runif(num_of_sample)
+  IntMC_nsf <- sum(h(n_samples))/(num_of_sample)
+  err_estim <- (IntMC_nsf - sol_analytically)
+  num_of_sample = num_of_sample +10
+}
+df_result_P3 <- data.frame(num_of_sample, 
+                           err_estim,
+                           IntMC_nsf,
+                           sol_analytically)
 
-    ¿Cuál de las dos funciones de importancia debe producir la varianza
-    más pequeña para estimar la integral siguiente por muestreo de
-    importancia?
+df_result_P3 %>%gt()
+```
 
-    
+##Problema 4 Sea $\hat{\theta}_{IS}$ el estimador de importancia de
+$\theta = \int g(x) dx$, donde la función de importancia $f$ es una
+densidad. Probar que si $g(x)/f(x)$ es acotada, entonces la varianza del
+estimador de muestreo por importancia $\hat{\sigma}_IS$ es finita.
+
+##Problema 5 Encontrar dos funciones de importancia f1 y f2 que tengan
+soporte en (1, ∞) y estén ‘cerca’ de:
+$g(x) = \frac{x^2}{\sqrt{2\pi}} e^{\frac{-x^2}{2}}$, x \> 1
+
+¿Cuál de las dos funciones de importancia debe producir la varianza más
+pequeña para estimar la integral siguiente por muestreo de importancia?
+
+```         
+  $\int_1^\inf{\frac{x^2}{\sqrt{2\pi}}e^{\frac{-x^2}{2}}}$
+```
 
 ```{r}
-# $\int_1^\inf{\frac{x^2}{\sqrt{2\pi}}e^{\frac{-x^2}{2}}}$
+# 
 ## plot g(x)
 N <- 10000
-x <- seq(1, 5, length.out = N)
+x <- runif(N, 1,5)# seq(1, 5, length.out = N)
 g <- function(x){
   g <- x^2/sqrt(2*pi) * exp(-x^2 / 2)
   return(g)
@@ -191,47 +226,49 @@ result_df_p5 <- data.frame(I_hat = c(I_hat_MI1,I_hat_MI2),
 result_df_p5 %>% gt()
 ```
 
-6.  Usar el algoritmo de Metropolis-Hastings para generar variadas
-    aleatorias de una densidad Cauchy estándar. Descartar las primeras
-    1000 observaciones de la cadena, y comparar los deciles de las
-    observaciones generadas con los deciles de la distribución Cauchy
-    estándar. Recordar que una densidad Cauchy(θ,η) tiene densidad dada
-    por la siguiente función:
+##Problema 6 Usar el algoritmo de Metropolis-Hastings para generar
+variadas aleatorias de una densidad Cauchy estándar. Descartar las
+primeras 1000 observaciones de la cadena, y comparar los deciles de las
+observaciones generadas con los deciles de la distribución Cauchy
+estándar. Recordar que una densidad Cauchy(θ,η) tiene densidad dada por
+la siguiente función:
 
-    $f(x) = \frac {1}{\theta \pi (1 + [\frac{x-\nu}{\theta}]^2)}, x ∈ R, θ > 0$
+````         
+$f(x) = \frac {1}{\theta \pi (1 + [\frac{x-\nu}{\theta}]^2)}, x ∈ R, θ > 0$
 
-    La densidad Cauchy estándar tiene θ = 1, η = 0, y corresponden a la
-    densidad t con un grado de libertad.
+La densidad Cauchy estándar tiene θ = 1, η = 0, y corresponden a la
+densidad t con un grado de libertad.
 
-    some info: <https://www.youtube.com/watch?v=0lpT-yveuIA>,
-    <https://www.youtube.com/watch?v=yCv2N7wGDCw>,
-    <https://www.youtube.com/watch?v=yApmR-c_hKU&t=0s>,
-    <https://www.youtube.com/watch?v=prZMpThbU3E&t=0s>
+some info: <https://www.youtube.com/watch?v=0lpT-yveuIA>,
+<https://www.youtube.com/watch?v=yCv2N7wGDCw>,
+<https://www.youtube.com/watch?v=yApmR-c_hKU&t=0s>,
+<https://www.youtube.com/watch?v=prZMpThbU3E&t=0s>
 
-    ```{r}
-    set.seed(123)
-    fcn_P6 <- function(x, nu, theta) {
-      den_f = theta*pi*(1+((x-nu)/theta)^2) 
-      f = 1/den_f
-      return(f)
-    }
-    N = 10000
-    # 
-    theta <- 1
-    nu <- 0
-    x <- seq(-10, 10, length.out = N)
-    pdf_Cauchy_estandard <- fcn_P6(x, 0, 1)
-    plt_df_p6 <- data.frame(x,
-                           y = fcn_P6(x, nu, theta))
-    ggplot(plt_df_p6, aes(x=x, y=y))+
-      geom_line()
+```{r}
+set.seed(123)
+fcn_P6 <- function(x, nu, theta) {
+  den_f = theta*pi*(1+((x-nu)/theta)^2) 
+  f = 1/den_f
+  return(f)
+}
+N = 10000
+# 
+theta <- 1
+nu <- 0
+x_plt <- runif(N, -10, 10)
+pdf_Cauchy_estandard <- fcn_P6(x_plt, 0, 1)
+plt_df_p6 <- data.frame(x,
+                       y = fcn_P6(x_plt, nu, theta))
+ggplot(plt_df_p6, aes(x=x, y=y))+
+  geom_line()
 
 
-    ```
+```
 
-    Since Cauchy distribution is symmetric, one can choose a normal
-    distribution as $s(\theta)$ and
-    $\frac{Q(\theta|\theta^*)}{Q(\theta^*|\theta)}=1$
+Since Cauchy distribution is symmetric, one can choose a normal
+distribution as $s(\theta)$ and
+$\frac{Q(\theta|\theta^*)}{Q(\theta^*|\theta)}=1$
+````
 
 ```{r}
 # definition of normal distribution parameters: mu = 0, var = 1
@@ -253,7 +290,7 @@ for(idx in 1:N){
   x <- x_vec[length(x_vec)]
 }
 
-## reject the first 1001 samples
+## reject the first 1000 samples
 x_vec_result <- x_vec[1001:length(x_vec)]
 x_vec_result_sorted <- sort(x_vec_result)
 f_result_mcmc <- fcn_P6(x_vec_result_sorted, 0,1)#dnorm(x_vec_result_sorted, mu_f, var_f)
@@ -261,10 +298,8 @@ f_result_mcmc <- fcn_P6(x_vec_result_sorted, 0,1)#dnorm(x_vec_result_sorted, mu_
 plt_df_p6_result <-  data.frame(x_mcmc = x_vec_result_sorted,
                                   f_result_mcmc = f_result_mcmc, 
                                 fcn_P6_result = fcn_P6(x_vec_result_sorted, nu, theta))
-
 ggplot(plt_df_p6_result) +
-  geom_histogram(aes(x=x_mcmc)) +
-  geom_line(aes(x=x_mcmc, y = fcn_P6_result), colour = "red")
+  geom_histogram(aes(x=x_mcmc)) 
 
 
 # deciles
@@ -341,11 +376,13 @@ ggplot(plt_df_P7_result, aes(x=var_vec,  y=accept_perc))+
 
 ```
 
-8.) Desarrollar un algoritmo de Metropolis-Hastings para muestrear de la
-distribución siguiente:
-\|------\|------\|------\|------\|-------\|-----\| \| 1 \| 2 \|3 \| 4 \|
-5 \|6 \| \|------\|------\|------\|------\|-------\|-----\| \| 0.01 \|
-0.39 \| 0.11 \| 0.18 \| 0.26 \| 0.05\|
+##Problema 8 Desarrollar un algoritmo de Metropolis-Hastings para
+muestrear de la distribución siguiente:
+\|------\|------\|------\|------\|-------\|-----\|
+
+\| 1 \| 2 \|3 \| 4 \| 5 \|6 \|
+
+\| 0.01 \| 0.39 \| 0.11 \| 0.18 \| 0.26 \| 0.05\|
 
 con distribución propuesta basada en un dado honesto.
 
@@ -390,15 +427,61 @@ df_result_P8 %>% gt()
     la recurrencia $f_n = f_{n−1} + f_{n−2}$,para n ≥ 3 con
     $f_1 = f_2 = 1$
 
-```{=html}
-<!-- --
-# >pk,m =  m − k + 1 k  , k = 0, 1, . .  . , ceiling(m/2)
-    
+```{r}
+fibonacci <- function(n){
+  ## n: max number of fibonacci chain
+  fibo <- numeric(n)
+  fibo[1] <- 1
+  fibo[2] <- 1
+  for(k in 3:n){
+    fibo[k] <- fibo[k-2] + fibo[k-1]
+  }
+  df <- data.frame(k = 1:n,
+                   fibo = fibo,
+                   fiboFact = factorial(fibo))
+  return(df)
+}
+test_fibo <- fibonacci(15)
+test_fibo
 ```
+
 a.  Mostrar que el número de sucesiones binarias de longitud m sin 1’s
-    adyaentes es fm+2
+    adyaentes es $f_{m+2}$
+
+    comment:
+    <https://math.stackexchange.com/questions/3172492/the-relationship-between-fibonacci-numbers-and-binary-numbers-that-have-no-conse>
+    $\\ r^2 - r - 1 = 0$ $r_{1,2} = \frac{1\pm\sqrt{5}}{2}$
+    $\\f_0 = c_1 r_1^0 + c_2 r_2^0 = 0$
+    $\\f_1 = c_1 r_1^1 + c_2 r_2^1 = 1\\$ resolving this linear problema
+    leads to: $\\ c_1 = \frac{1}{\sqrt{5}}$
+    $\\ c_2 =-\\frac{1}{\\sqrt{5}}$
+
+number of sequences:
+$$a(n)=f(n+2)= \frac{1}{\sqrt{5}}(\frac{1+\sqrt5}{2})^2-\frac{1}{\sqrt{5}}(\frac{1-\sqrt5}{2})^2$$
+
 b.  Sea pk,m el número de buenas sucesiones de longitud m con
-    exactamente k 1’s. Mostrar que 
-c.  Sea µm el número esperados de 1’s en una buena sucesión de longitud
+    exactamente k 1’s. Mostrar que $$\\\begin{pmatrix} m-k+1 \\ k \end{pmatrix}$$ , k = 0, 1,..., ceiling(m/2)
+
+```{r}
+N <- 3
+m <- seq(1, N)
+k <- seq(0, ceiling(N/2))
+sol <- matrix(0, nrow = N, ncol=3)
+for (midx in m){
+  for (kidx in seq(1:length(k))){
+    num <- factorial(m[midx]-k[kidx]+1)
+    den <- factorial(k[kidx])*factorial(m[midx]-k[kidx]+1-k[kidx])
+    sol[midx, 1] <- num/den
+    sol[midx, 2] <- m[midx]
+    sol[midx, 3] <- k[kidx]
+  }
+}
+```
+
+c.  Sea $µ_m$ el número esperados de 1’s en una buena sucesión de longitud
     m bajo la distribución uniforme. Encontrar µm para m = 10, 100,
-    1000.
+    1000. 
+
+```{r}
+
+```
