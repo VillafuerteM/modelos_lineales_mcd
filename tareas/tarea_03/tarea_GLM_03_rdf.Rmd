@@ -437,8 +437,7 @@ fibonacci <- function(n){
     fibo[k] <- fibo[k-2] + fibo[k-1]
   }
   df <- data.frame(k = 1:n,
-                   fibo = fibo,
-                   fiboFact = factorial(fibo))
+                   fibo = fibo)
   return(df)
 }
 test_fibo <- fibonacci(15)
@@ -452,15 +451,31 @@ a.  Mostrar que el número de sucesiones binarias de longitud m sin 1’s
     <https://math.stackexchange.com/questions/3172492/the-relationship-between-fibonacci-numbers-and-binary-numbers-that-have-no-conse>
     $\\ r^2 - r - 1 = 0$ $r_{1,2} = \frac{1\pm\sqrt{5}}{2}$
     $\\f_0 = c_1 r_1^0 + c_2 r_2^0 = 0$
-    $\\f_1 = c_1 r_1^1 + c_2 r_2^1 = 1\\$ resolving this linear problema
+    $\\f_1 = c_1 r_1^1 + c_2 r_2^1 = 1\\$ resolving this linear problem
     leads to: $\\ c_1 = \frac{1}{\sqrt{5}}$
     $\\ c_2 =-\\frac{1}{\\sqrt{5}}$
 
 number of sequences:
-$$a(n)=f(n+2)= \frac{1}{\sqrt{5}}(\frac{1+\sqrt5}{2})^2-\frac{1}{\sqrt{5}}(\frac{1-\sqrt5}{2})^2$$
+$$a(n)=f(n+2)= \frac{1}{\sqrt{5}}(\frac{1+\sqrt5}{2})^{(n+2)}-\frac{1}{\sqrt{5}}(\frac{1-\sqrt5}{2})^{(n+2)}$$
+
+```{r}
+binary_sequ <- function(n){
+  a <- 1/sqrt(5)
+  b <- (1+sqrt(5))/2
+  c <- (1-sqrt(5))/2
+  num_of_ones <- a*b^(n+2)-a*c^(n+2)
+}
+test_fibo
+bin_seq <- binary_sequ(test_fibo$k)
+bin_seq <- c(1, 1, bin_seq[1:(length(bin_seq)-2)])
+test_fibo <- test_fibo %>% mutate(bin_seq)
+test_fibo %>% gt()
+```
 
 b.  Sea pk,m el número de buenas sucesiones de longitud m con
-    exactamente k 1’s. Mostrar que $$\\\begin{pmatrix} m-k+1 \\ k \end{pmatrix}$$ , k = 0, 1,..., ceiling(m/2)
+    exactamente k 1’s. Mostrar que
+    $$\\\begin{pmatrix} m-k+1 \\ k \end{pmatrix}$$ , k = 0, 1,...,
+    ceiling(m/2)
 
 ```{r}
 N <- 3
@@ -478,8 +493,9 @@ for (midx in m){
 }
 ```
 
-c.  Sea $µ_m$ el número esperados de 1’s en una buena sucesión de longitud
-    m bajo la distribución uniforme. Encontrar µm para m = 10, 100,
+c.  Sea $µ_m$ el número esperados de 1’s en una buena sucesión de
+    longitud m bajo la distribución uniforme. Encontrar µm para m = 10,
+    100,
     1000. 
 
 ```{r}
