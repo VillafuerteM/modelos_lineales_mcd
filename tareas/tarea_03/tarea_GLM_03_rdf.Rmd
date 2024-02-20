@@ -452,14 +452,14 @@ a.  Mostrar que el número de sucesiones binarias de longitud m sin 1’s
     $\\ r^2 - r - 1 = 0$ $r_{1,2} = \frac{1\pm\sqrt{5}}{2}$
     $\\f_0 = c_1 r_1^0 + c_2 r_2^0 = 0$
     $\\f_1 = c_1 r_1^1 + c_2 r_2^1 = 1\\$ resolving this linear problem
-    leads to: $\\ c_1 = \frac{1}{\sqrt{5}}$
-    $\\ c_2 =-\\frac{1}{\\sqrt{5}}$
+    leads to: $\\ c_1 = \frac{1}{\sqrt{5}}$ $c_2 =-\frac{1}{\sqrt{5}}$
 
-number of sequences:
+number of sequences no consecutive 1´s with $n$ number of bits:
 $$a(n)=f(n+2)= \frac{1}{\sqrt{5}}(\frac{1+\sqrt5}{2})^{(n+2)}-\frac{1}{\sqrt{5}}(\frac{1-\sqrt5}{2})^{(n+2)}$$
 
 ```{r}
 binary_sequ <- function(n){
+  # n: number of bits in the sequence
   a <- 1/sqrt(5)
   b <- (1+sqrt(5))/2
   c <- (1-sqrt(5))/2
@@ -482,10 +482,13 @@ N <- 3
 m <- seq(1, N)
 k <- seq(0, ceiling(N/2))
 sol <- matrix(0, nrow = N, ncol=3)
-for (midx in m){
-  for (kidx in seq(1:length(k))){
+for (kidx in seq(1:length(k))){
+  for (midx in m){
     num <- factorial(m[midx]-k[kidx]+1)
+    print(midx)
     den <- factorial(k[kidx])*factorial(m[midx]-k[kidx]+1-k[kidx])
+    print(kidx)
+    print(num/den)
     sol[midx, 1] <- num/den
     sol[midx, 2] <- m[midx]
     sol[midx, 3] <- k[kidx]
