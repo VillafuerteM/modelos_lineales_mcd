@@ -12,6 +12,8 @@ authors:
 ```{r librerias, echo=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(gt)
+library(patchwork)
+theme_set(theme_minimal())
 ```
 
 1.  Calcular el estimador de Monte Carlo de la integral\
@@ -26,7 +28,7 @@ Sabemos que la integral de $sin(t)$ tiene un valor exacto de $0.5$ con $t\in[0,\
 set.seed(156057)
 # variables
 f <- function(x)sin(x)
-N <- 10000
+N <- 100000
 
 # simulamos puntos
 tabla <- tibble(
@@ -52,8 +54,7 @@ Calculamos los verdaderos valores. Igual, simulamos de una $Beta(3,3)$ y calcula
 
 ```{r}
 set.seed(156057)
-num_betas <- tibble(sim_x=rbeta(10000,3,3)) %>%
-  group_by()
+num_betas <- tibble(sim_x=rbeta(10000,3,3)) 
 
 menores <- function(x, valor) {
   sum(x <= valor) / length(x)
@@ -75,3 +76,130 @@ tabla %>% gt()
 
 $$\int_{0}^{1} \frac{e^{-x}}{1 + x^2} \, dx$$
 y calcular el tamaño de muestra necesario para obtener un error de estimación máximo de $±0.001$.
+
+El verdadero valor de la integral es aproximadamente $0.524797$
+
+```{r}
+set.seed(156057)
+# variables
+f <- function(x)(exp(-x)/(1+x^2))
+N <- 90000
+
+# simulamos puntos
+tabla <- tibble(
+  y = runif(N,0,1),
+  x = runif(N,0,1)) 
+
+# evaluamos si están en el área deseada y multiplicamos por
+# el area conocida
+integral <- tabla %>%
+  mutate(pertenece=(y<=f(x))) %>%
+  summarise(Area=mean(pertenece))
+
+diferencia <- abs(integral$Area-0.524797)
+epsilon <- 0.001
+while(diferencia>epsilon){
+  set.seed(156057)
+  N<-N+1000
+  tabla <- tibble(
+  y = runif(N,0,1),
+  x = runif(N,0,1))
+  
+  integral <- tabla %>%
+    mutate(pertenece=(y<=f(x))) %>%
+    summarise(Area=mean(pertenece))
+  
+  diferencia <- abs(integral$Area-0.524797)
+}
+```
+
+```{r echo=FALSE}
+integral %>% cbind(N=N) %>% gt()
+```
+
+Si lo hacemos analíticamente:
+
+```{r}
+# hacemos una simulacion inicial
+set.seed(156057)
+# variables
+f <- function(x)(exp(-x)/(1+x^2))
+N <- 1000000
+
+# simulamos puntos
+tabla <- tibble(x = runif(N,0,1),
+                y = f(x))
+
+desv_est <- sd(tabla$y)
+epsilon <- 0.001 
+
+n_necesaria <- (1.96 * desv_est / epsilon) ^ 2
+```
+
+Y nos dice que se requiere una muestra de 230 mil puntos, cuando en realidad mostramos que con alrededor de 100 mil ya obtenemos el epsilon deseado.
+
+{{< pagebreak >}}
+
+4.  Sea $\hat{\theta}_{IS}$ el estimador de importancia de $\theta$, donde la función de importancia $f$ es una densidad. Probar que si $\frac{g(x)}{f(x)}$ es acotada, entonces la varianza del estimador de muestreo por importancia $\hat{\sigma}_{IS}$ es finita.
+
+{{< pagebreak >}}
+
+5.  Encontrar dos funciones de importancia $f1$ y $f2$ que tengan soporte en $(1, ∞)$ y estén ‘cerca’ de:
+
+$$
+g(x) = \frac{x^2}{\sqrt{2\pi}} e^{-\frac{x^2}{2}}, \quad x > 1
+$$
+
+¿Cuál de las dos funciones de importancia debe producir la varianza más pequeña para
+estimar la integral siguiente por muestreo de importancia?
+
+$$
+\int_{1}^{\infty} \frac{x^2}{\sqrt{2\pi}} e^{-\frac{x^2}{2}} \, dx
+$$
+
+{{< pagebreak >}}
+
+6.  Usar el algoritmo de Metropolis-Hastings para generar variables aleatorias de una densidad Cauchy estándar. Descartar las primeras $1000$ observaciones de la cadena, y comparar los deciles de las observaciones generadas con los deciles de la distribución Cauchy estándar. Recordar que una densidad $Cauchy(θ,η)$ tiene densidad dada por la siguiente función:
+
+$$
+f(x) = \frac{1}{\theta \pi (1 + ((x - \eta)/\theta)^2)}, \quad x \in \mathbb{R}, \theta > 0
+$$
+
+```{r}
+simula_cauchy <- function(n, eta, theta){
+  f <- function(x){(1/(pi*theta*(1+((x-eta)/theta)^2)))}
+  x <- numeric(n)
+  x[1] <- eta  # valor inicial
+  
+  for(i in 2:n){
+    w <- x[i-1]
+    y <- rnorm(1, mean = w, sd = 1)  # propuesta q(y|x) = N(x,1)
+    alfa <- min(1, (f(y) * dnorm(w, 
+                                 mean=y, 
+                                 sd=1)) / (f(w) * dnorm(y, 
+                                                        mean=w, 
+                                                        sd=1)))
+    x[i] <- ifelse(runif(1) < alfa, y, w)
+  }
+  
+  return(tibble(x=x, f=f(x)))
+}
+
+a <- simula_cauchy(10000,0,1)
+```
+
+```{r echo=FALSE}
+p1 <-ggplot(a%>%slice(1001:n()),
+       aes(x=seq(1,nrow(a)-1000,by=1), 
+           y=x)) +
+  geom_line() + 
+  labs(x="iterations without burnout")
+
+p2 <- ggplot(a%>%slice(1001:n()))+
+  geom_freqpoly(aes(x), bins=50) +
+  geom_vline(xintercept=0, color='red3', linetype='dashed')
+
+p1 + p2
+```
+
+{{< pagebreak >}}
