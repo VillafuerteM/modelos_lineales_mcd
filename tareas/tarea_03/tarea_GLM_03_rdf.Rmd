@@ -472,34 +472,39 @@ test_fibo <- test_fibo %>% mutate(bin_seq)
 test_fibo %>% gt()
 ```
 
-b.  Sea pk,m el número de buenas sucesiones de longitud m con
+b.  Sea $p_{k,m}$ el número de buenas sucesiones de longitud $m$ con
     exactamente k 1’s. Mostrar que
-    $$\\\begin{pmatrix} m-k+1 \\ k \end{pmatrix}$$ , k = 0, 1,...,
-    ceiling(m/2)
+    $$\\ p_{k,m} = \begin{pmatrix} m-k+1 \\ k \end{pmatrix}$$, k = 0,
+    1,..., ceiling(m/2)
+
+$$
+p_{k.m}=\frac{(m-k+1)!}{k!(m-2k+1)!}=\frac{(m-2k+1)!*\prod_{i=0}^{k-1}(m+1-k-i)}{k!(m-2k+1)!}=\prod_{i=0}^{k-1}\frac{(m+1-k-i)}{k!}
+$$
 
 ```{r}
-N <- 3
-m <- seq(1, N)
-k <- seq(0, ceiling(N/2))
-sol <- matrix(0, nrow = N, ncol=3)
-for (kidx in seq(1:length(k))){
-  for (midx in m){
-    num <- factorial(m[midx]-k[kidx]+1)
-    print(midx)
-    den <- factorial(k[kidx])*factorial(m[midx]-k[kidx]+1-k[kidx])
-    print(kidx)
-    print(num/den)
-    sol[midx, 1] <- num/den
-    sol[midx, 2] <- m[midx]
-    sol[midx, 3] <- k[kidx]
-  }
+p_km <- function(k, m){
+  num <- factorial(m-k+1)
+  den <- factorial(k)*factorial(m-2*k+1)
+  return(num/den)
 }
+p_km_verif <- function(k, m){
+  den=factorial(k)
+  num = 1
+  for(idx in seq(0, k-1)){
+    num <- num*(m+1-k-idx)
+  }
+  return(num/den)
+}
+
+test_p <- p_km(2, 8)
+test_p_verif <- p_km(4, 8)
+test_p
+test_p_verif
 ```
 
 c.  Sea $µ_m$ el número esperados de 1’s en una buena sucesión de
-    longitud m bajo la distribución uniforme. Encontrar µm para m = 10,
-    100,
-    1000. 
+    longitud m bajo la distribución uniforme. Encontrar $µ_m$ para m =
+    10, 100, 1000
 
 ```{r}
 
