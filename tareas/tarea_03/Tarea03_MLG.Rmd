@@ -16,6 +16,7 @@ library(tidyverse)
 library(gt)
 library(ggplot2)
 library(MASS)
+library(patchwork)
 ```
 
 ![](ITAM.png)
@@ -33,28 +34,24 @@ Fecha de entrega: 21 de febrero 2024.
 
 > El estimador de Monte Carlo es
 > $$(b-a)\int_{a}^{b} g(x) \cdot dx = \frac{\pi}{3}\left\lbrace\frac{1}{m}\sum_{i=1}^{m} \mathrm{sin}{(u)}\right\rbrace$$
-> donde $u$ es generada a partir de una $U(0,\frac{\pi}{3})$
+> donde $u$ es generada a partir de una distribución
+> $U(0,\frac{\pi}{3})$
 
 ```{r}
-# Definir la función a integrar
 set.seed(123) 
 f_seno <- function(t) sin(t)
 a <- 0
 b <- (pi/3)
 
-# Número de muestras para el método de Monte Carlo
 n <- 100000
-
 y <- replicate(1000, expr = {
   x <- runif(n, 0, pi/3)
-  theta.hat <- pi/3 * mean(sin(x))
+  theta.hat <- pi/3 * mean(f_seno(x))
   })
 
-# Valor exacto de la integral
 integral <- integrate(f_seno, a, b)$value
 
-# Mostrar los resultados
-compara <- data.frame(Integral = integral,Est_MonteCarlo = mean(y))
+compara <- data.frame(Integral = integral, Est_MonteCarlo = mean(y))
 compara |> gt() |> fmt_number(decimals = 6)
 ```
 
@@ -93,10 +90,8 @@ resultados |> gt() |> fmt_number(decimals = 4)
 ```
 
 3.  Usar integración Monte Carlo para estimar:
-    $$\int_0^1 \frac{e^{-x}}{1+x^2}dx$$
-
-y calcular el tamaño de muestra necesario para obtener un error de
-estimación máximo de $\pm0.001$
+    $$\int_0^1 \frac{e^{-x}}{1+x^2}dx$$ y calcular el tamaño de muestra
+    necesario para obtener un error de estimación máximo de $\pm0.001$
 
 ```{r warning=FALSE}
 set.seed(123)
@@ -181,9 +176,9 @@ y <- x^2 * exp(-x^2/2)/sqrt(2 * pi)
 df <- data.frame(x = x, y = y)
  
 ggplot(df, aes(x, y)) +
-  geom_line(linetype = "solid", color = "steelblue1", size = 1.5) +
-  geom_line(aes(y = 2 * dnorm(x, 1)), linetype = "dashed", color = "steelblue3", size = 1.5) +
-  geom_line(aes(y = dgamma(x - 1, 3/2, 2)), linetype = "dotted",  color = "steelblue4", size = 1.5) +
+  geom_line(linetype = "solid", color = "steelblue1", linewidth = 1.5) +
+  geom_line(aes(y = 2 * dnorm(x, 1)), linetype = "dashed", color = "steelblue3", linewidth = 1.5) +
+  geom_line(aes(y = dgamma(x - 1, 3/2, 2)), linetype = "dotted",  color = "steelblue4", linewidth = 1.5) +
   ylim(0, 1) +
   labs(title = "Funciones g(x), f1, y f2")  +
   theme(legend.position = "top") +
@@ -211,8 +206,8 @@ df <- data.frame(x = x,
                  f2 = y/(2 * dnorm(x, 1)))
  
 ggplot(df, aes(x)) +
-  geom_line(aes(y = f1), linetype = "dotted", size = 1.5, color = "steelblue1") +
-  geom_line(aes(y = f2), linetype = "dashed", size = 1.5, color = "steelblue4") +
+  geom_line(aes(y = f1), linetype = "dotted", linewidth = 1.5, color = "steelblue1") +
+  geom_line(aes(y = f2), linetype = "dashed", linewidth = 1.5, color = "steelblue4") +
   labs(title = "Funciones f1 y f2") +
 theme(legend.position = "right",  
         plot.margin = margin(r = 5)) +
@@ -288,7 +283,7 @@ resultados62 |> gt() |> fmt_number(decimals = 3)
 
 7.  Implementar un muestreador de Metrópolis de caminata aleatoria para
     generar muestras de una distribución estándar de Laplace:
-    $$f(x)= \frac{1}{2} e^{-\|x\|}, \\qquad x \in \mathbb{R}$$ Para el
+    $$f(x)= \frac{1}{2} e^{-\|x\|}, \\qquad x \in \mathbb{R}$$Para el
     incremento, simula una normal estándar. Comparar las cadenas
     generadas cuando la distribución propuesta tiene diferentes
     varianzas. Calcular las tasas de aceptación de cada cadena. Sea la
@@ -325,27 +320,60 @@ rw1 <- rw.Laplace(N, x0, sigma[1])
 rw2 <- rw.Laplace(N, x0, sigma[2])
 rw3 <- rw.Laplace(N, x0, sigma[3])
 rw4 <- rw.Laplace(N, x0, sigma[4])
-print(c(rw1$k, rw2$k, rw3$k, rw4$k))
+
+resultados7 <- data.frame("sigma(0.5)" = rw1$k, 
+                   "sigma(1)" = rw2$k, 
+                   "sigma(2)" = rw3$k, 
+                   "sigma(4)" = rw4$k)
+
+resultados7 |> gt() |> 
+  tab_header(
+    title = "Cadenas Generadas",
+    subtitle = "Valores de Sigma") |>
+  fmt_number(decimals = 0, sep_mark = ",")
 ```
 
 ```{r}
-cat("Tasas de aceptación ", (c(rw1$k, rw2$k, rw3$k, rw4$k)/N),"\n")
+resultados72 <- data.frame("sigma(0.5)" = rw1$k/N, 
+                   "sigma(1)" = rw2$k/N, 
+                   "sigma(2)" = rw3$k/N, 
+                   "sigma(4)" = rw4$k/N)
+resultados72 |> gt() |> 
+  tab_header(
+    title = "Tasa de aceptación",
+    subtitle = "Valores de Sigma") |>
+  fmt_percent(decimals = 2, sep_mark = ",")
 ```
 
 ```{r}
-b<-100
+b <- 100
 y1 <- rw1$x[(b + 1):N]
 y2 <- rw2$x[(b + 1):N]
 y3 <- rw3$x[(b + 1):N]
 y4 <- rw4$x[(b + 1):N]
- 
-# Comparación gráfica de las cadenas
-par(mfrow = c(2, 2))
-plot(rw1$x, type = "l")
-plot(rw2$x, type = "l")
-plot(rw3$x, type = "l")
-plot(rw4$x, type = "l")
-par(mfrow = c(1, 1))
+
+data <- data.frame(
+  Iteracion = 1:N,
+  rw1 = rw1$x,
+  rw2 = rw2$x,
+  rw3 = rw3$x,
+  rw4 = rw4$x)
+
+par(mfrow = c(2,2))
+
+c1 <- ggplot(data, aes(x = Iteracion)) +
+  geom_line(aes(y = rw1), linetype = "solid", color = "turquoise4") +
+  ggtitle("Cadena 1")
+c2 <- ggplot(data, aes(x = Iteracion)) +
+  geom_line(aes(y = rw2), linetype = "solid", color = "maroon3") +
+  ggtitle("Cadena 2")
+c3 <- ggplot(data, aes(x = Iteracion)) +
+  geom_line(aes(y = rw3), linetype = "solid", color = "slateblue3") +
+  ggtitle("Cadena 3")
+c4 <- ggplot(data, aes(x = Iteracion)) +
+  geom_line(aes(y = rw4), linetype = "solid", color = "mediumpurple") +
+  ggtitle("Cadena 4")
+c1 + c2 + c3 + c4
 ```
 
 ```{r}
@@ -363,28 +391,33 @@ lines(z, fx)
 hist(y4, breaks = "Scott", freq = FALSE, ylim = c(0,+ 0.5))
 lines(z, fx)
 par(mfrow = c(1, 1))
- 
-par(mfrow = c(2, 2))
-Q1 <- quantile(y1, p)
-qqplot(z, Q1, cex = 0.4)
-abline(0, 1)
-Q2 <- quantile(y2, p)
-qqplot(z, Q2, cex = 0.4)
-abline(0, 1)
-Q3 <- quantile(y3, p)
-qqplot(z, Q3, cex = 0.4)
-abline(0, 1)
-Q4 <- quantile(y4, p)
-qqplot(z, Q4, cex = 0.4)
-abline(0, 1)
-par(mfrow = c(1, 1))
 ```
 
-Según las gráficas anteriores, se descarta de cada cadena una pequeña
-muestra preliminar de tamaño 100. Cada una de las cadenas parece haber
-convergido hacia la distribución de Laplace objetivo. Las cadenas 2 y 3
-correspondientes a $σ=1,2$ tienen los mejores ajustes según los gráficos
-qqplot. La segunda cadena es la más eficiente de estas dos.
+```{r}
+p <- seq(0.01, 0.99, by = 0.01)
+
+set.seed(123)
+y1 <- rexp(200, rate = 1)
+y2 <- rexp(200, rate = 1)
+y3 <- rexp(200, rate = 1)
+y4 <- rexp(200, rate = 1)
+
+data <- data.frame(value = c(y1, y2, y3, y4),
+                   group = rep(c("y1", "y2", "y3", "y4"), each = 200))
+
+ggplot(data, aes(sample = value)) +
+  geom_qq(distribution = qexp, dparams = list(rate = 1), size = 0.5) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "mediumpurple") +
+  facet_wrap(~group, scales = "free") +
+  labs(title = "QQ Plots") 
+
+```
+
+> Según las gráficas anteriores, se descarta de cada cadena una pequeña
+> muestra preliminar de tamaño 100. Cada una de las cadenas parece haber
+> convergido hacia la distribución de Laplace objetivo. Las cadenas 2 y
+> 3 correspondientes a $\sigma=1,2$ tienen los mejores ajustes según los
+> gráficos qqplot. La segunda cadena es la más eficiente de estas dos.
 
 8.  Desarrollar un algoritmo de Metropolis-Hastings para muestrear de la
     distribución siguiente:
@@ -394,36 +427,140 @@ qqplot. La segunda cadena es la más eficiente de estas dos.
     | 1    | 2    | 3    | 4    | 5    | 6    |
     | 0.01 | 0.39 | 0.11 | 0.18 | 0.26 | 0.05 |
 
-con distribución propuesta basada en un dado honesto.
+    con distribución propuesta basada en un dado honesto.
 
 ```{r}
-### Pre Run ###
-trials <- 1000 #Run 100000 Markov steps
-x <- numeric(trials) #Create numeric objects of size trials
-accepted <- 0 #Number of accpeted steps, starts at 0
-rejected <- 0 #Number of rejected steps, starts at 0
+n <- 1000 
+x <- numeric(n) 
+p_acep <- 0 #Numero de pasos aceptados
+p_rech <- 0 #Numero de pasos rechazados
 
 ### MCMC ###
-pi <- c(0.01,0.39,0.11,0.18,0.26,0.05) # Weighted die distribution
+pi <- c(0.01,0.39,0.11,0.18,0.26,0.05) # Distribución objetivo
 
-#Take a regular die, roll it once, the result is the starting
-#point
+#Generamos el primer valor de la cadena
 x[1] <- sample(c(1:6),1) 
 
-for(i in 2:trials){
-  current <- x[i-1] #pi_i
-  proposed <- sample(c(1:6), 1) #pi_i
-  A <- pi[proposed]/pi[current] #a(i,j)
-  if(runif(1) <= A){ #If accepted, move to x_j 
-    #and accepted steps increase by one
-    x[i] <- proposed
-    accepted <- accepted + 1
+for(i in 2:n){
+  actual <- x[i-1] 
+  propuesta <- sample(c(1:6), 1) #pi_i
+  A <- pi[propuesta]/pi[actual] #a(i,j)
+  if(runif(1) <= A){ #si aceptas, te mueves a x_j 
+    #y pasos aceptados incrementa 1
+    x[i] <- propuesta
+    p_acep <- p_acep + 1
   }
-  else{ #If rejected, stay at x_i and rejected increases
-    x[i] <- current
-    rejected <- rejected + 1
+  else{ #Si es rechazado, permanecemos en x_i y pasos rechazados incrementa 1
+    x[i] <- actual
+    p_rech <- p_rech + 1
   }
 }
-
-
 ```
+
+9.  La sucesión de Fibonacci $1, 1, 2, 3, 5, 8, 13, . . .$ es descrita
+    por la recurrencia $f_n = f_{n−1} + f_{n−2}$, para $n ≥ 3$ con
+    $f_1 = f_2 = 1$
+
+<!-- -->
+
+a.  Mostrar que el número de sucesiones binarias de longitud $m$ sin 1's
+    adyacentes es $f_{m+2}$
+
+```{r}
+fibonacci <- function(n){
+  ## n: Maximo numero de fibonacci
+  fibo <- numeric(n)
+  fibo[1] <- 1
+  fibo[2] <- 1
+  for(k in 3:n){
+    fibo[k] <- fibo[k-2] + fibo[k-1]
+  }
+  df <- data.frame(k = 1:n,
+                   fibo = fibo)
+  return(df)
+}
+test_fibo <- fibonacci(12)
+```
+
+> Sea $$r^2 - r - 1 = 0$$ $$r_{1,2} = \frac{1\pm\sqrt{5}}{2}$$
+> $$f_0 = c_1 r_1^0 + c_2 r_2^0 = 0$$ $f_1 = c_1 r_1^1 + c_2 r_2^1 = 1$
+> resolviendo este problema linear lleva a: $$c_1 = \frac{1}{\sqrt{5}}$$
+> y $$c_2 =-\frac{1}{\sqrt{5}}$$ número de secuencias de 1's no
+> adyacentes con $n$ número de bits:
+> $$a(n)=f(n+2)= \frac{1}{\sqrt{5}}\left(\frac{1+\sqrt5}{2}\right)^{(n+2)}-\frac{1}{\sqrt{5}}\left(\frac{1-\sqrt5}{2}\right)^{(n+2)}$$
+
+```{r}
+seq_bin <- function(n){
+  # n: Numero de bits en la secuencia
+  a <- 1/sqrt(5)
+  b <- (1+sqrt(5))/2
+  c <- (1-sqrt(5))/2
+  num_ones <- a*b^(n+2)-a*c^(n+2)
+}
+
+bin_seq <- seq_bin(test_fibo$k)
+bin_seq <- c(1, 1, bin_seq[1:(length(bin_seq)-2)])
+test_fibo <- test_fibo |> mutate(bin_seq)
+test_fibo |> gt()
+```
+
+> Definimos $B_m$ como el número de sucesiones binarias de longitud $m$
+sin 1's adyacentes. Analicemos los casos base:
+$B_1 = 2$ (las posibles sucesiones son 0 y 1).
+$B_2 = 3$ (las posibles sucesiones son 00, 01, 10).
+Ahora, para $m \geq 3$, observamos que el último dígito puede ser 0 o 1.
+-   Si es 0, entonces los $m-1$ dígitos anteriores formarán una sucesión
+    sin 1's adyacentes, es decir, $B_{m-1}$.
+-   Si el último dígito es 1, entonces el penúltimo dígito debe ser 0, y
+    los $m-2$ dígitos anteriores formarán una sucesión sin 1's
+    adyacentes, es decir, $B_{m-2}$. Por lo tanto, para $m \geq 3$, la
+    relación de recurrencia es:
+$$B_m=B_{m-1}+B_{m-2}$$
+Esto coincide con la recurrencia de la sucesión de Fibonacci. Además,
+dado que $B_1 = 2$ y $B_2 = 3$, podemos concluir que $B_m$ es igual al
+$(m+2)$-ésimo término de la sucesión de Fibonacci, es decir,
+$B_m = f_{m+2}$.
+
+b.  Sea $p_{k,m}$ el número de buenas sucesiones de longitud $m$ con
+    exactamente $k$ 1's. Mostrar que
+    $$p_{k,m}=\binom{m-k+1}{k}, k=0,1, ..., ceiling(m/2)$$
+
+    **FALTA**
+
+c.  Sea $\mu_m$ el número esperados de 1's en una buena sucesión de
+    longitud $m$ bajo la distribución uniforme. Encontrar $\mu_m$ para
+    $m = 10, 100, 1000$.
+
+    ```{r}
+    # Función para calcular el número de Fibonacci
+    fibonacci <- function(n) {
+      if (n <= 2) {
+        return(1)
+      } else {
+        fib_seq <- numeric(n)
+        fib_seq[1:2] <- 1
+        for (i in 3:n) {
+          fib_seq[i] <- fib_seq[i-1] + fib_seq[i-2]
+        }
+        return(fib_seq)
+      }
+    }
+
+    # Función para calcular mu_m
+    calculate_mu <- function(m) {
+      fib_sequence <- fibonacci(m + 2)
+      mu_m <- m / 2 * fib_sequence[m + 2]
+      return(mu_m)
+    }
+
+    # Calcular mu_m para m = 10, 100, 1000
+    mu_10 <- calculate_mu(10)
+    mu_100 <- calculate_mu(100)
+    mu_1000 <- calculate_mu(1000)
+
+    # Imprimir resultados
+    cat("mu_10 =", mu_10, "\n")
+    cat("mu_100 =", mu_100, "\n")
+    cat("mu_1000 =", mu_1000, "\n")
+
+    ```
