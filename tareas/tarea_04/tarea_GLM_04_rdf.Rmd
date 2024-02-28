@@ -86,9 +86,9 @@ m1 <- jags.model(file = "jags_model01.txt",
                    n.adapt = 1000) # burn-in
 update(m1,1000)
 
-z <- jags.samples(m1, c("alpha", "beta"), 1000, type = c("trace","mean"))
-hist(z$trace$alpha,breaks = 50,prob=T)
-hist(z$trace$beta,breaks = 50,prob=T)
+z <- jags.samples(m1, c("alpha", "beta"), 1000, type = c("trace"))
+hist(z$alpha,breaks = 50,prob=T)
+hist(z$beta,breaks = 50,prob=T)
 
 ```
 
