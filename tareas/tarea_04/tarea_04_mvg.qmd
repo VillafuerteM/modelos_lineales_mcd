@@ -9,9 +9,26 @@ authors:
   - "Mariano Villafuerte - 156057"
 ---
 
-```{r librerias, include=FALSE, message=FALSE, warning=FALSE}
+```{r librerias, echo=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(cmdstanr)
+library(gt)
+```
+
+```{r, echo=FALSE}
+datos <- tibble(
+  dosis = c(1.6907, 1.7242, 1.7552, 
+            1.7842, 1.8113, 1.8369, 
+            1.8610, 1.8839),
+  
+  muertos = c(6, 13, 18, 
+              28, 52, 53, 
+              61, 60),
+  
+  expuestos = c(59, 60, 62, 
+                56, 63, 59, 
+                62, 60)
+)
 ```
 
 Spiegelhalter et al. (1995) analiza la mortalidad del escarabajo del trigo en la siguiente tabla, usando BUGS.\
@@ -38,8 +55,7 @@ $$
 
 $$
 \text{complementario log-log}: p_i = 1 - \exp[-\exp(\alpha + \beta z_i)]
-$$
-en donde se usa la covariada centrada $z_i=w_i-\bar{w}$ para reducir la correlación entre la ordenada $\alpha$ y la pendiente $\beta$. En OpenBUGS el código para implementar este modelo es el que sigue:
+$$ en donde se usa la covariada centrada $z_i=w_i-\bar{w}$ para reducir la correlación entre la ordenada $\alpha$ y la pendiente $\beta$. En OpenBUGS el código para implementar este modelo es el que sigue:
 
 ```{text eval=FALSE}
 model {
@@ -56,9 +72,32 @@ model {
 
 Lo que sigue al símbolo $\#$ es un comentario, así que esta versión corresponde al modelo\
 logit. También dbin denota la distribución binomial y dnorm denota la distribución nor-\
-mal, donde el segundo argumento denota la precisión, no la varianza (entonces las iniciales normales para $\alpha$ y $\beta$ tienen precisión $0.001$, que son aproximadamente iniciales planas (no informativas)). Hacer el análisis en OpenBUGS.
+mal, donde el segundo argumento denota la precisión, no la varianza (entonces las iniciales normales para $\alpha$ y $\beta$ tienen precisión $0.001$, que son aproximadamente iniciales planas (no informativas)). Se hace el análisis en STAN, se incluye el código en el anexo.
 
-```{r}
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 mod_logit <- cmdstanr::cmdstan_model("modelo_p1_logit.stan")
-print(mod_logit)
+```
+
+```{r echo=FALSE}
+stan_data <- list(
+  k = nrow(datos),
+  n = datos$expuestos,
+  y = datos$muertos,
+  w = datos$dosis
+)
+```
+
+```{r message=FALSE, warning=FALSE}
+fit_logit <- mod_logit$sample( 
+                data = stan_data, 
+                iter_sampling = 2000,
+                chains = 4,
+                show_messages = F)
+```
+
+```{r include=FALSE}
+# sims_tbl <- fit_logit$draws(format = "df")
+fit_logit$summary() |> 
+  select(variable, mean, sd, q5, q95) |>
+  gt() |> fmt_number()
 ```
