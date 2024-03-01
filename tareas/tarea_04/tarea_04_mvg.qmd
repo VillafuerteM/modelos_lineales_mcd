@@ -11,6 +11,7 @@ authors:
 
 ```{r librerias, include=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
+library(cmdstanr)
 ```
 
 Spiegelhalter et al. (1995) analiza la mortalidad del escarabajo del trigo en la siguiente tabla, usando BUGS.\
@@ -56,3 +57,8 @@ model {
 Lo que sigue al símbolo $\#$ es un comentario, así que esta versión corresponde al modelo\
 logit. También dbin denota la distribución binomial y dnorm denota la distribución nor-\
 mal, donde el segundo argumento denota la precisión, no la varianza (entonces las iniciales normales para $\alpha$ y $\beta$ tienen precisión $0.001$, que son aproximadamente iniciales planas (no informativas)). Hacer el análisis en OpenBUGS.
+
+```{r}
+mod_logit <- cmdstanr::cmdstan_model("modelo_p1_logit.stan")
+print(mod_logit)
+```
