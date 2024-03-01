@@ -51,4 +51,4 @@ rsconnect/
 # some additions
 /tareas/**/*.Rproj
 /tareas/**/*.Rhistory
-
+/tareas/**/*.exe
