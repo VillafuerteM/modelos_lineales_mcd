@@ -1,0 +1,424 @@
+---
+title: "Tarea 3 - Modelos Lineales Generalizados"
+authors: "Blanca E. García Manjarrez – 118886 Mariano Villafuerte Gonzalez – 156057
+  Thomas M. Rudolf - 169293 Yuneri Pérez Arellano - 199813"
+output:
+  html_document: default
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gt)
+```
+
+![](ITAM.png)
+
+Fecha de entrega: 6 de marzo de 2024.
+
+-   Blanca E. García Manjarrez -- 118886
+-   Mariano Villafuerte Gonzalez -- 156057
+-   Thomas M. Rudolf - 169293
+-   Yuneri Pérez Arellano - 199813
+
+
+1.  Spiegelhalter et al. (1995) analiza la mortalidad del escarabajo del trigo en la siguiente tabla,usando BUGS.
+
+```{=tex}
+\begin{document}
+\begin{tabular}{lrrcrr}
+\hline
+ & \multicolumn{2}{c}{Enero} & & \multicolumn{2}{c}{Febrero}\\
+\cline{2-3}\cline{5-6}
+Ciudad & Ingresos & Gastos & & Ingresos & Gastos\\ 
+\hline
+Madrid & 2500 & 1750 & & 2600 & 1800\\ 
+Barcelona & 2250 & 1500 & & 2400 & 1650\\ 
+\hline
+\end{tabular}
+\end{document}
+```
++------------+------------+--------------+
+| Dosis      | N° muertos | N° expuestos |
+|            |            |              |
+| \$ w_i \$  | \$ y_1 \$  | \$ n_i \$    |
++============+============+==============+
+| 1.6907     | 6          | 59           |
++------------+------------+--------------+
+| 1.7242     | 13         | 60           |
++------------+------------+--------------+
+| 1.7552     | 18         | 62           |
++------------+------------+--------------+
+| 1.7842     | 28         | 56           |
++------------+------------+--------------+
+| 1.8113     | 52         | 63           |
++------------+------------+--------------+
+| 1.8369     | 53         | 59           |
++------------+------------+--------------+
+| 1.8610     | 61         | 62           |
++------------+------------+--------------+
+| 1.8839     | 60         | 60           |
++------------+------------+--------------+
+
+Estos autores usaron una parametrización usual en dos parámetros de la forma $p_i\equiv P(muerte\mid w_i)$, pero comparan tres funciones ligas diferentes:
+
+$$logit:p_i= \frac{exp(\alpha+\beta z_i)}{1+exp(\alpha+\beta z_i)}$$ $$probit:p_i= \Phi(\alpha+\beta z_i)$$ $$complementario \quad log-log:p_i=1-exp[-exp(\alpha+\beta z_i)]$$ en donde se usa la covariada centrada $z_i = w_i − \bar{w}$ para reducir la correlación entre la ordenada $\alpha$ y la pendiente $\beta$. En OpenBUGS el código para implementar este modelo es el que sigue:
+
+-   <div>
+
+    ```{=tex}
+    \begin{lstlisting}
+    model{ for (i in 1:k){
+    y[i] \~ dbin(p[i],n[i])
+    logit(p[i]) \<- alpha + beta*(w[i]-mean(w[])
+    # probit(p[i]) \<- alpha + beta*(w[i]-mean(w[])
+    # cloglog(p[i]) \<- alpha + beta\*(w[i]-mean(w[])
+    } #fin del loop i
+
+    alpha \~ dnorm(0.0,1.0e-3)
+    dbeta \~ dnorm(0.0,1.0e-3)
+    } #fin del código
+    \end{lstlisting}
+    ```
+
+    </div>
+
+Lo que sigue al símbolo \# es un comentario, así que esta versión corresponde al modelo logit. También dbin denota la distribución binomial y dnorm denota la distribución normal, donde el segundo argumento denota la precisión, no la varianza (entonces las iniciales normales para $\alpha$ y $\beta$ tienen precisión 0.001, que son aproximadamente iniciales planas (no informativas)). Hacer el análisis en OpenBUGS.
+
+
+2. Consideren las siguientes dos distribuciones condicionales completas, analizadas en el artículo
+de Casella y George (1992) que les incluí como lectura:
+$$f(x|y)\propto ye^{-yx} \quad 0<x<B<\infty$$
+$$f(y|x)\propto xe^{-xy} \quad 0<y<B<\infty$$
+- Obtener un estimado de la distribución marginal de $X$ cuando $B = 10$ usando el Gibbs sampler.
+
+```{r}
+nsim=10^3
+B=10
+X=Y=rep(0,nsim)
+X[1]=rexp(1) #initialize the chain
+Y[1]=rexp(1) #initialize the chain
+for(i in 2:nsim){ #inversion method
+  X[i]=-log(1-runif(1)*(1-exp(-B*Y[i-1])))/Y[i-1]
+  Y[i]=-log(1-runif(1)*(1-exp(-B*X[i])))/X[i]
+  }
+st=0.1*nsim
+marge=function(x){ 
+  (1-exp(-B*x))/x
+  }
+nmarge=function(x){
+  marge(x)/integrate(marge,low=0,up=B)$val
+  }
+par(mfrow=c(1,2),mar=c(4,4,2,1))
+hist(X,col="wheat2",breaks=25,xlab="",main="",prob=TRUE)
+curve(nmarge,add=T,lwd=2,col="sienna")
+plot(cumsum(X)[(st+1):nsim]/c(1:(nsim-st)),
+     type="l",lwd=1.5,ylab="")
+```
+
+
+
+```{r}
+# Función de densidad condicional para f(x|y)
+f_x_given_y <- function(x, y, B) {y * exp(-y * x)}
+
+# Función de densidad condicional para f(y|x)
+f_y_given_x <- function(y, x, B) {x * exp(-x * y)}
+
+nsim <- 1000
+B <- 10
+X <- Y <- rep(0, nsim)
+# Inicializar las cadenas
+X[1] = rexp(1)
+Y[1] = rexp(1)
+# Iteraciones del Gibbs sampler
+for (i in 2:nsim) {
+  X[i] = -log(1 - runif(1) * (1 - exp(-B * Y[i - 1]))) / Y[i - 1] # Muestrear X dado Y
+  Y[i] = -log(1 - runif(1) * (1 - exp(-B * X[i]))) / X[i] # Muestrear Y dado X
+}
+
+# Función de densidad marginal de X
+marge <- function(x, B) {(B * exp(-B * x))}
+
+# Normalizar la función de densidad marginal de X
+nmarge <- function(x, B) {
+  marge(x, B) / integrate(marge, lower = 0, upper = B, subdivisions = 1000, B = B)$value
+}
+
+# Graficar histograma y densidad marginal de X
+par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
+hist(X, col = "wheat2", breaks = 25, xlab = "", main = "", prob = TRUE)
+curve(nmarge(x, B), add = TRUE, lwd = 2, col = "sienna")
+# Graficar la convergencia de la cadena para X
+plot(cumsum(X) / (1:nsim), type = "l", lwd = 1.5, ylab = "Cumulative Mean of X")
+```
+-   Ahora supongan que $B =\infty$ así que las distribuciones condicionales completas son ahora las ordinarias distribuciones exponenciales no truncadas. Mostrar analíticamente que $f_x(t) = 1/t$ es una solución a la ecuación integral en este caso:
+$$f_x(x)=\int \left[\int f_{x|y}(x|y)f_{y|t}(y|t)dy\right]f_x(t)dt$$
+¿El Gibbs sampler convergerá a esta solución?
+
+>Usando la función dada:
+$$f_x(x)=\int \left[\int f_{x|y}(x|y)f_{y|t}(y|t)dy\right]f_x(t)dt$$
+$$=\int \left[\int ye^{-yx}te^{-ty}dy \right]f_x(t)dt$$
+$$=\int t\left[\int ye^{-yx}te^{-ty}dy \right]f_x(t)dt$$
+Substituyendo $f_x(t)=\frac{1}{t}$ tenemos:
+$$=\int\left[\frac{t}{(x+t)^2} \right]\frac{1}{t}dt$$
+$$=\frac{1}{x}$$
+Aunque esta es una solución, 1/x no es una función de densidad. 
+Cuando se aplica el muestreador de Gibbs a las densidades condicionales, 
+la convergencia se rompe. No da una aproximación a 1/x, de hecho,
+no obtenemos una muestra de variables aleatorias de una 
+distribución marginal.
+
+
+3.  Supongan que una variable aleatoria $y$ se distribuye de acuerdo a la densidad poli-Cauchy: $$g(y)=\prod_{i=1}^{n} \frac{1}{\pi(a+(y-a_1)^2)}$$ donde $a=(a_1,...,a_n)$ es un vector de parámetros. Supongan que $n=6$ y $a=(1,2,3,6,7,8)$.
+
+-   Escriban una función que calcule la log-densidad de $y$.
+-   Escriban una función que tome una muestra de tamaño 10,000 de la densidad de $y$, usando Metropolis-Hastings con función propuesta una caminata aleatoria con desviación estandar $C$. Investiguen el efecto de la elección de $C$ en la tasa de aceptación, y la mezcla de la cadena en la densidad.
+-   Usando la muestra simulada de una "buena" elección de $C$, aproximar la probabilidad $P(6 < Y < 8)$.
+
+4.  Supongan que el vector $(X,Y)$ tiene función de distribución conjunta: $$f(x,y)=\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}, \quad x>0, \quad y=0,1,2,...$$ y deseamos simular de la densidad conjunta.
+
+-   Mostrar que la densidad condicional $f(x|y)$ es una Gamma e identificar los parámetros.
+
+Para encontrar la densidad condicional $f(x∣y)$, primero necesitamos encontrar la densidad marginal de $Y$,$f_Y(y)$ ya que la densidad condicional se define como:
+
+$$f(x|y)=\frac{f(x,y)}{f_Y(y)}$$ Dada la función de distribución conjunta, podemos encontrar la densidad marginal de $Y$ integrando sobre todos los posibles varores de $x$:
+
+$$
+f_Y(y)=\int_{0}^{\infty}f(x,y)dx
+$$
+
+$$
+=\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}dx
+$$
+
+Sacando los terminos que no dependen de $x$ de la integral, tenemos:
+
+$$
+=\frac{b^a}{y!\Gamma(a)}\int_{0}^{\infty}x^{a+y-1}e^{-(1+b)x}dx
+$$
+
+Recordemos que la función Gamma se define como:
+
+$$f_X(x)=\frac{\lambda}{\Gamma(\alpha)}(\lambda x)^{\alpha-1}e^{-\lambda}$$
+
+donde $$\Gamma (\alpha )=\int _{0}^{\infty }t^{\alpha -1}e^{-t}dt$$
+
+Y la de densidad acumulada es:
+
+$$
+F_{X}(x)=\int _{0}^{x}{\frac {\lambda }{\Gamma (\alpha )}}(\lambda y)^{\alpha -1}e^{-\lambda y}\;dy
+$$
+
+La integral que tenemos esta incompleta por lo que agregaremos un 1 para completar una Gamma con parámetros $(a+y)$ y $(1+b)$:
+
+$$
+=\frac{b^a}{y!\Gamma(a)}\Gamma(a+y)\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}dx
+$$
+
+$$
+f_Y(y)=\frac{b^a\Gamma(a+y)}{y!\Gamma(a)}
+$$
+
+Ahora podemos encontrar la densidad condicional $f(x|y)$:
+
+$$f(x|y)=\frac{f(x,y)}{f_Y(y)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{b^a\Gamma(a+y)}{y!\Gamma(a)}}$$
+
+Simplificamos y obtenemos:
+
+$$f(x|y)=\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}$$
+
+Identificamos que la distribución condicional $f(x|y)$ es una distribución Gamma con parámetros $\alpha=(a+y)$ y $\beta=(1+b)$
+
+-   Mostrar que la densidad condicional $f(y|x)$ es Poisson.
+
+Para encontrar la densidad condicional $f(y∣x)$, primero necesitamos encontrar la densidad marginal de $X$,$f_X(x)$ ya que la densidad condicional se define como:
+
+$$f(y|x)=\frac{f(x,y)}{f_X(x)}$$ Dada la función de distribución conjunta, podemos encontrar la densidad marginal de $X$ sumando para todos los posibles varores de $y$:
+
+$$ f_X(x)=\sum_{y=0}^{\infty}f(x,y) $$
+
+$$ =\sum_{y=0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}$$
+
+Se sacan de la sumatoria los terminos que no depende de $y$, quedando:
+
+$$
+ =\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}\frac{e^{-x}x^{a+y-1}}{y!}
+$$
+
+$$
+=\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}e^{-x}\left(\frac{x^{a+y-1}}{y!}\right)
+$$
+
+$$
+=\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}\sum_{y=0}^{\infty} x^{a-1} \frac{x^y}{y!}
+$$
+
+$$
+=\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}e^{x}x^{a-1}
+$$
+
+$$
+f_X(x)=\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1}
+$$
+
+Entonces la densidad condicional de $f(y|x)$ es:
+
+$$f(y|x)=\frac{f(x,y)}{f_X(x)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1}}$$
+
+$$
+f(y|x)=\frac{e^{-x}x^y}{y!} \quad \sim Possion(x)
+$$
+
+-   Escriban una función para implementar el Gibbs sampler cuando las constantes son dadas con valores $a=1$ y $b=1$.
+
+```{r}
+fx_y <- function(x, y, a, b){
+  return(dgamma(x, shape = (a + y), rate = (1 + b)))
+}
+
+fy_x <- function(y, x){
+  return(dpois(y, lambda = x))
+}
+```
+
+```{r}
+#######################################
+# This function is a Gibbs sampler
+#
+# Args
+# start.a: initial value for a
+# start.b: initial value for b
+# n.sims: number of iterations to run
+# data: observed data, should be in a
+# data frame with one column
+#
+# Returns:
+# A two column matrix with samples
+# for a in first column and
+# samples for b in second column
+#######################################
+sampleGibbs <- function(start.a, start.b, n.sims, data){
+  # get sum, which is sufficient statistic
+  x <- sum(data)
+  # get n
+  n <- nrow(data)
+  # create empty matrix, allocate memory for efficiency
+  res <- matrix(NA, nrow = n.sims, ncol = 2)
+  res[1,] <- c(start.a,start.b)
+  for (i in 2:n.sims){
+    # sample the values
+    res[i,1] <- rgamma(1, shape = n+1,
+    rate = res[i-1,2]*x+1)
+    res[i,2] <- rgamma(1, shape = n+1,
+    rate = res[i,1]*x+1)
+    }
+  return(res)
+  }
+
+```
+
+```{r}
+# run Gibbs sampler
+n.sims <- 10000
+# return the result (res)
+res <- sampleGibbs(.25,.25,n.sims,data)
+head(res)
+
+```
+
+```{r}
+# bivariate normal
+
+# first the "proper way"
+
+rbvn<-function (n, rho) 
+{
+        x <- rnorm(n, 0, 1)
+        y <- rnorm(n, rho * x, sqrt(1 - rho^2))
+        cbind(x, y)
+}
+
+bvn<-rbvn(10000,0.98)
+par(mfrow=c(3,2))
+plot(bvn,col=1:10000)
+plot(bvn,type="l")
+plot(ts(bvn[,1]))
+plot(ts(bvn[,2]))
+hist(bvn[,1],40)
+hist(bvn[,2],40)
+par(mfrow=c(1,1))
+
+# now with a gibbs sampler...
+
+gibbs<-function (n, rho) 
+{
+        mat <- matrix(ncol = 2, nrow = n)
+        x <- 0
+        y <- 0
+        mat[1, ] <- c(x, y)
+        for (i in 2:n) {
+                x <- rnorm(1, rho * y, sqrt(1 - rho^2))
+                y <- rnorm(1, rho * x, sqrt(1 - rho^2))
+                mat[i, ] <- c(x, y)
+        }
+        mat
+}
+
+bvn<-gibbs(10000,0.98)
+par(mfrow=c(3,2))
+plot(bvn,col=1:10000)
+plot(bvn,type="l")
+plot(ts(bvn[,1]))
+plot(ts(bvn[,2]))
+hist(bvn[,1],40)
+hist(bvn[,2],40)
+par(mfrow=c(1,1))
+```
+
+-   Con su función, escriban 1,000 ciclos del Gibbs sampler y de la salida, hacer los histogramas y estimar $E(Y)$.
+
+
+5.  Supongan que se tiene una matriz de $4×4$ de variables aleatorias Bernoulli, y la denotamos por $[X_{ij}]$, y sea $N(X)$ el número total de éxitos en $X$ (la suma de $X$) y $D(X)$ es el total de vecinos de dichos éxitos (horizontales o verticales) que difieren. Por ejemplo,
+
+```{=tex}
+\begin{equation}
+\begin{pmatrix}
+1 & 0 & 0 $ 0\\
+0 & 0 & 0 $ 0\\
+0 & 0 & 0 $ 0\\
+0 & 0 & 0 $ 0
+\end{pmatrix}
+\end{equation}
+```
+*****aqui faltan otras matrices
+
+Noten que si se escriben los elementos de $X$ en un vector $V$ , entonces existe una matriz $M$ de 24 × 16 tal que $D(X)$ es la suma de los valores absolutos de $MV$. El 24 surge porque hay 24 pares de vecinos a revisar. Supongan que $\pi(X)$, la distribución de $X$, es proporcional a
+$$\pi(X)\propto p^{N(X)}(1-p)^{16-N(X)}exp(-\lambda D(X))$$
+Si $\lambda=0$, las variables son iid Bernoulli$(p)$.
+Usar el método de Metropolis-Hastings usando los siguientes kerneles de transición. Hay $2^{16}$ posibles estados, uno por cada posible valor de $X$.
+a)    Sea $q_1$ tal que cada transición es igualmente plausible con probabilidad $1/2^{16}$. Esto es, el siguiente estado candidato para $X$ es simplemente un vector de 16 iid Bernoulli$(p)$.
+b)    Sea $q_2$ tal que se elige una de las 16 entradas en $X$ con probabilidad 1/16, y luego se determina el valor de la celda a ser 0 o 1 con probabilidad 0.5 en cada caso. Entonces sólo un elemento de $X$ puede cambiar en cada transición a lo más.
+
+Ambas $q$’s son simétricas, irreducibles y tienen diagonales positivas. La primera se mueve más rápido que la segunda.
+Estamos interesados en la probabilidad de que todos los elementos de la diagonal sean 1. Usen las dos $q$’s para estimar la probabilidad de 1’s en la diagonal para $λ=0, 1,3$ y $p=0.5,0.8$. Esto se puede hacer calculando la fracción acumulada de veces que la cadena tiene 1’s sobre la diagonal conforme se muestrea de la cadena. Comparar los resultados de las 2 cadenas. Tienen el mismo valor asintótico, pero ¿una cadena llega más rápido que la
+otra? ¿Alguna cadena muestra más autocorrelación que la otra (por ejemplo, estimados de la probabilidad en 100 pasos sucesivos muestran más correlación para una cadena que para la otra?).
+En este problema, también determinen cuántas simulaciones hay que hacer, para desechar el periodo de calentamiento.
+
+
+6. Considera los siguientes números:
+$$0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2$$
+Usen la distribución exponencial $Y_i\sim exp(θ)$ para modelar estos datos y asignen una inicial sobre $log θ$.
+a)    Definan los datos enWinBUGS (u OpenBUGS). Usen $θ=1$ como valor inicial.
+b)    Escriban el código para el modelo.
+c)    Compilen el modelo y obtengan una muestra de 1000 iteraciones después de descartar las 500 iteraciones iniciales como burnin.
+d)    Monitoreen la convergencia gráficamente usando gráficas ’trace’ y de autocorrelación.
+e)    Obtengan estadísticas sumarias posteriores y densidades para $θ$, $1/θ$ y $log θ$
+f)    Con los datos el primer inciso, ahora usen las distribuciones (i) gamma (ii) log-normal para modelar los datos, así como (iii) normal para los logaritmos de los valores originales. En todos los modelos hagan un ejercicio similar al de los numerales previos, y comparen los resultados obtenidos bajo todos los modelos. Hagan todos los supuestos que tengan que hacer.
+
+
+
+
