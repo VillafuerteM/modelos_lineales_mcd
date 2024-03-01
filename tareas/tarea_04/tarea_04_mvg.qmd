@@ -1,26 +1,58 @@
 ---
-title: "Tarea - 4"
-format: html
+title: "Tarea 4 - MLG"
+format: pdf
 editor: visual
+authors: 
+  - "Blanca Garcia - 118886"
+  - "Yuneri Perez - 199813"
+  - "Thomas Rudolf - 169293"
+  - "Mariano Villafuerte - 156057"
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
-```{r}
-1 + 1
+```{r librerias, include=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
 ```
 
-You can add options to executable code like this
+Spiegelhalter et al. (1995) analiza la mortalidad del escarabajo del trigo en la siguiente tabla, usando BUGS.\
 
-```{r}
-#| echo: false
-2 * 2
+|  Dosis | \# muertos | \# expuestos |
+|-------:|-----------:|-------------:|
+| 1.6907 |          6 |           59 |
+| 1.7242 |         13 |           60 |
+| 1.7552 |         18 |           62 |
+| 1.7842 |         28 |           56 |
+| 1.8113 |         52 |           63 |
+| 1.8369 |         53 |           59 |
+| 1.8610 |         61 |           62 |
+| 1.8839 |         60 |           60 |
+
+\
+Estos autores usaron una parametrización usual en dos parámetros de la forma $p_i ≡ P(\textrm{muerte}|w_i)$, pero comparan tres funciones ligas diferentes:
+
+$$\text{logit}: p_i = \frac{\exp(\alpha + \beta z_i)}{1 + \exp(\alpha + \beta z_i)}$$
+
+$$
+\text{probit}: p_i = \Phi(\alpha + \beta z_i)
+$$
+
+$$
+\text{complementario log-log}: p_i = 1 - \exp[-\exp(\alpha + \beta z_i)]
+$$
+en donde se usa la covariada centrada $z_i=w_i-\bar{w}$ para reducir la correlación entre la ordenada $\alpha$ y la pendiente $\beta$. En OpenBUGS el código para implementar este modelo es el que sigue:
+
+```{text eval=FALSE}
+model {
+  for (i in 1:k) {
+    y[i] ~ dbin(p[i], n[i])
+    logit(p[i]) <- alpha + beta * (w[i] - mean(w))
+    # probit(p[i]) <- alpha + beta * (w[i] - mean(w))
+    # cloglog(p[i]) <- alpha + beta * (w[i] - mean(w))
+  } # End of loop over i
+  alpha ~ dnorm(0.0, 1.0E-3)
+  beta ~ dnorm(0.0, 1.0E-3)
+} # End of model
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+Lo que sigue al símbolo $\#$ es un comentario, así que esta versión corresponde al modelo\
+logit. También dbin denota la distribución binomial y dnorm denota la distribución nor-\
+mal, donde el segundo argumento denota la precisión, no la varianza (entonces las iniciales normales para $\alpha$ y $\beta$ tienen precisión $0.001$, que son aproximadamente iniciales planas (no informativas)). Hacer el análisis en OpenBUGS.
