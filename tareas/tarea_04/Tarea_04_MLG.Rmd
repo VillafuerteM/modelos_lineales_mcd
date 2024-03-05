@@ -3,8 +3,8 @@ title: "Tarea 3 - Modelos Lineales Generalizados"
 authors: "Blanca E. García Manjarrez – 118886 Mariano Villafuerte Gonzalez – 156057
   Thomas M. Rudolf - 169293 Yuneri Pérez Arellano - 199813"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 editor_options:
   markdown:
     wrap: 72
@@ -14,6 +14,8 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 library(gt)
 library(ggplot2)
+library(rstan)
+library(rstantools)
 ```
 
 ![](ITAM.png)
@@ -28,44 +30,17 @@ Fecha de entrega: 6 de marzo de 2024.
 1.  Spiegelhalter et al. (1995) analiza la mortalidad del escarabajo del
     trigo en la siguiente tabla,usando BUGS.
 
-```{=tex}
-\begin{document}
-\begin{tabular}{lrrcrr}
-\hline
- & \multicolumn{2}{c}{Enero} & & \multicolumn{2}{c}{Febrero}\\
-\cline{2-3}\cline{5-6}
-Ciudad & Ingresos & Gastos & & Ingresos & Gastos\\ 
-\hline
-Madrid & 2500 & 1750 & & 2600 & 1800\\ 
-Barcelona & 2250 & 1500 & & 2400 & 1650\\ 
-\hline
-\end{tabular}
-\end{document}
-```
-+---------+---------+---------+
-| Dosis   | N°      | N° e    |
-|         | muertos | x       |
-| \$ w_i  |         | puestos |
-| \$      | \$ y_1  |         |
-|         | \$      | \$ n_i  |
-|         |         | \$      |
-+=========+=========+=========+
-| 1.6907  | 6       | 59      |
-+---------+---------+---------+
-| 1.7242  | 13      | 60      |
-+---------+---------+---------+
-| 1.7552  | 18      | 62      |
-+---------+---------+---------+
-| 1.7842  | 28      | 56      |
-+---------+---------+---------+
-| 1.8113  | 52      | 63      |
-+---------+---------+---------+
-| 1.8369  | 53      | 59      |
-+---------+---------+---------+
-| 1.8610  | 61      | 62      |
-+---------+---------+---------+
-| 1.8839  | 60      | 60      |
-+---------+---------+---------+
+| Dosis  | No Muertos | No Expuestos |
+|:------:|:----------:|:------------:|
+| $w_i$  |   $y_i$    |    $n_i$     |
+| 1.6907 |     6      |      59      |
+| 1.7242 |     13     |      60      |
+| 1.7552 |     18     |      62      |
+| 1.7842 |     28     |      56      |
+| 1.8113 |     52     |      63      |
+| 1.8369 |     53     |      59      |
+| 1.8610 |     61     |      62      |
+| 1.8839 |     60     |      60      |
 
 Estos autores usaron una parametrización usual en dos parámetros de la
 forma $p_i\equiv P(muerte\mid w_i)$, pero comparan tres funciones ligas
@@ -74,28 +49,9 @@ diferentes:
 $$logit:p_i= \frac{exp(\alpha+\beta z_i)}{1+exp(\alpha+\beta z_i)}$$
 $$probit:p_i= \Phi(\alpha+\beta z_i)$$
 $$complementario \quad log-log:p_i=1-exp[-exp(\alpha+\beta z_i)]$$ en
-donde se usa la covariada centrada $z_i = w_i − \bar{w}$ para reducir la
+donde se usa la covariada centrada $z_i=w_i-\bar{w}$ para reducir la
 correlación entre la ordenada $\alpha$ y la pendiente $\beta$. En
 OpenBUGS el código para implementar este modelo es el que sigue:
-
--   <div>
-
-    ```{=tex}
-    \begin{lstlisting}
-    model{ for (i in 1:k){
-    y[i] \~ dbin(p[i],n[i])
-    logit(p[i]) \<- alpha + beta*(w[i]-mean(w[])
-    # probit(p[i]) \<- alpha + beta*(w[i]-mean(w[])
-    # cloglog(p[i]) \<- alpha + beta\*(w[i]-mean(w[])
-    } #fin del loop i
-
-    alpha \~ dnorm(0.0,1.0e-3)
-    dbeta \~ dnorm(0.0,1.0e-3)
-    } #fin del código
-    \end{lstlisting}
-    ```
-
-    </div>
 
 Lo que sigue al símbolo \# es un comentario, así que esta versión
 corresponde al modelo logit. También dbin denota la distribución
@@ -105,8 +61,167 @@ normales para $\alpha$ y $\beta$ tienen precisión 0.001, que son
 aproximadamente iniciales planas (no informativas)). Hacer el análisis
 en OpenBUGS.
 
+```         
+model{
+for (i in 1:k){
+y[i] ~ dbin(p[i],n[i])
+logit(p[i]) <- alpha + beta*(w[i]-mean(w[])
+# probit(p[i]) <- alpha + beta*(w[i]-mean(w[])
+# cloglog(p[i]) <- alpha + beta*(w[i]-mean(w[])
+} #fin del loop i
+alpha ~ dnorm(0.0,1.0e-3)
+dbeta ~ dnorm(0.0,1.0e-3)
+} #fin del código
+```
 
+```{r}
+dosis <- c(1.6907, 1.7242, 1.7552, 1.7842, 1.8113, 1.8369, 1.8610, 1.8839)
+muertos <- c(6, 13, 18, 28, 52, 53, 61, 60)
+expuestos <- c(59, 60, 62, 56, 63, 59, 62, 60)
 
+data_input <- list(
+  k = length(muertos),
+  n = expuestos,
+  y = muertos,
+  w = dosis - mean(dosis)
+)
+```
+
+```{stan, output.var="model_p1_cloglog"}
+data {
+  int<lower=0> k; // observaciones
+  array[k] int<lower=0> n; // expuestos
+  array[k] int<lower=0> y; // muertos
+  array[k] real w; // dosis
+  }
+transformed data {
+  real w_mean = mean(w); // promedio de w para centrar
+}
+parameters {
+  real alpha;
+  real beta;
+}
+transformed parameters {
+  array[k] real p; // probability of success
+  for (i in 1:k) {
+    p[i] = 1 - exp(-exp(alpha + beta * (w[i] - w_mean))); // cloglog
+  }
+}
+model {
+  alpha ~ normal(0, 1000); // inicial de alfa
+  beta ~ normal(0, 1000); // inicial de beta
+  for (i in 1:k) {
+    y[i] ~ binomial(n[i], p[i]);
+  }
+}
+```
+
+```{r}
+# Realiza el muestreo
+model_fit <- rstan::sampling(model_p1_cloglog, data = data_input)
+# Interpretaciones 
+print(model_fit)
+```
+
+```{r}
+plot(model_fit)
+```
+
+```{stan, output.var="modelo_p1_logit"}
+data {
+  int<lower=0> k; // observaciones
+  array[k] int<lower=0> n; // expuestos
+  array[k] int<lower=0> y; // muertos
+  array[k] real w; // dosis
+}
+
+transformed data {
+  real w_mean = mean(w); // promedio de w para centrar
+}
+
+parameters {
+  real alpha;
+  real beta;
+}
+
+transformed parameters {
+  array[k] real p; // probability of success
+
+  for (i in 1:k) {
+    p[i] = inv_logit(alpha + beta * (w[i] - w_mean)); // logit 
+    // p[i] = Phi_approx(alpha + beta * (w[i] - w_mean)); // probit 
+    // p[i] = 1 - exp(-exp(alpha + beta * (w[i] - w_mean))); // cloglog
+  }
+}
+
+model {
+  alpha ~ normal(0, 1000); // inicial de alfa
+  beta ~ normal(0, 1000); // inicial de beta
+
+  for (i in 1:k) {
+    y[i] ~ binomial(n[i], p[i]);
+  }
+}
+```
+
+```{r}
+# Realiza el muestreo
+model_fit2 <- rstan::sampling(modelo_p1_logit, data = data_input)
+# Interpretaciones 
+print(model_fit2)
+```
+
+```{r}
+plot(model_fit2)
+```
+
+```{stan, output.var="modelo_p1_probit"}
+data {
+  int<lower=0> k; // observaciones
+  array[k] int<lower=0> n; // expuestos
+  array[k] int<lower=0> y; // muertos
+  array[k] real w; // dosis
+}
+
+transformed data {
+  real w_mean = mean(w); // promedio de w para centrar
+}
+
+parameters {
+  real alpha;
+  real beta;
+}
+
+transformed parameters {
+  array[k] real p; // probability of success
+
+  for (i in 1:k) {
+    p[i] = inv_logit(alpha + beta * (w[i] - w_mean)); // logit 
+    // p[i] = Phi_approx(alpha + beta * (w[i] - w_mean)); // probit 
+    // p[i] = 1 - exp(-exp(alpha + beta * (w[i] - w_mean))); // cloglog
+  }
+}
+
+model {
+  alpha ~ normal(0, 1000); // inicial de alfa
+  beta ~ normal(0, 1000); // inicial de beta
+
+  for (i in 1:k) {
+    y[i] ~ binomial(n[i], p[i]);
+  }
+}
+```
+
+```{r}
+# Realiza el muestreo
+model_fit3 <- rstan::sampling(modelo_p1_probit, data = data_input)
+# Interpretaciones 
+print(model_fit3)
+```
+
+```{r}
+plot(model_fit3)
+```
 
 2.  Consideren las siguientes dos distribuciones condicionales
     completas, analizadas en el artículo de Casella y George (1992) que
@@ -114,9 +229,15 @@ en OpenBUGS.
     $$f(x|y)\propto ye^{-yx} \quad 0<x<B<\infty$$
     $$f(y|x)\propto xe^{-xy} \quad 0<y<B<\infty$$
 
+3.  Consideren las siguientes dos distribuciones condicionales
+    completas, analizadas en el artículo de Casella y George (1992) que
+    les incluí como lectura:
+    $$f(x|y)\propto ye^{-yx} \quad 0<x<B<\infty$$
+    $$f(y|x)\propto xe^{-xy} \quad 0<y<B<\infty$$
+
 -   Obtener un estimado de la distribución marginal de $X$ cuando
     $B = 10$ usando el Gibbs sampler.
-    
+
 ```{r}
 X = rep(0, 5000)
 Y = rep(0, 5000)
@@ -194,75 +315,59 @@ ggplot(data = data.frame(X), aes(x = X)) +
 -   Mostrar que la densidad condicional $f(x|y)$ es una Gamma e
     identificar los parámetros.
 
->Para encontrar la densidad condicional $f(x∣y)$, primero necesitamos
-encontrar la densidad marginal de $Y$,$f_Y(y)$ ya que la densidad
-condicional se define como:
-$$f(x|y)=\frac{f(x,y)}{f_Y(y)}$$ Dada la función de distribución
-conjunta, podemos encontrar la densidad marginal de $Y$ integrando sobre
-todos los posibles varores de $x$:
-$$
-f_Y(y)=\int_{0}^{\infty}f(x,y)dx
-$$
-$$
-=\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}dx
-$$
-Sacando los terminos que no dependen de $x$ de la integral, tenemos:
-$$
-=\frac{b^a}{y!\Gamma(a)}\int_{0}^{\infty}x^{a+y-1}e^{-(1+b)x}dx
-$$
-Recordemos que la función Gamma se define como:
-$$f_X(x)=\frac{\lambda}{\Gamma(\alpha)}(\lambda x)^{\alpha-1}e^{-\lambda}$$
-donde $$\Gamma (\alpha )=\int _{0}^{\infty }t^{\alpha -1}e^{-t}dt$$
-Y la de densidad acumulada es:
-$$
-F_{X}(x)=\int _{0}^{x}{\frac {\lambda }{\Gamma (\alpha )}}(\lambda y)^{\alpha -1}e^{-\lambda y}\;dy
-$$
-La integral que tenemos esta incompleta por lo que agregaremos un 1 para
-completar una Gamma con parámetros $(a+y)$ y $(1+b)$:
-$$
-=\frac{b^a}{y!\Gamma(a)}\Gamma(a+y)\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}dx
-$$
-$$
-f_Y(y)=\frac{b^a\Gamma(a+y)}{y!\Gamma(a)}
-$$
-Ahora podemos encontrar la densidad condicional $f(x|y)$:
-$$f(x|y)=\frac{f(x,y)}{f_Y(y)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{b^a\Gamma(a+y)}{y!\Gamma(a)}}$$
-Simplificamos y obtenemos:
-$$f(x|y)=\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}$$
-Identificamos que la distribución condicional $f(x|y)$ es una
-distribución Gamma con parámetros $\alpha=(a+y)$ y $\beta=(1+b)$
+> Para encontrar la densidad condicional $f(x|y)$, primero necesitamos
+> encontrar la densidad marginal de $Y$,$f_Y(y)$ ya que la densidad
+> condicional se define como: $$f(x|y)=\frac{f(x,y)}{f_Y(y)}$$ Dada la
+> función de distribución conjunta, podemos encontrar la densidad
+> marginal de $Y$ integrando sobre todos los posibles varores de $x$: $$
+> f_Y(y)=\int_{0}^{\infty}f(x,y)dx
+> $$ $$
+> =\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}dx
+> $$ Sacando los terminos que no dependen de $x$ de la integral,
+> tenemos: $$
+> =\frac{b^a}{y!\Gamma(a)}\int_{0}^{\infty}x^{a+y-1}e^{-(1+b)x}dx
+> $$ Recordemos que la función Gamma se define como:
+> $$f_X(x)=\frac{\lambda}{\Gamma(\alpha)}(\lambda x)^{\alpha-1}e^{-\lambda}$$
+> donde $$\Gamma (\alpha )=\int _{0}^{\infty }t^{\alpha -1}e^{-t}dt$$ Y
+> la de densidad acumulada es: $$
+> F_{X}(x)=\int _{0}^{x}{\frac {\lambda }{\Gamma (\alpha )}}(\lambda y)^{\alpha -1}e^{-\lambda y}\;dy
+> $$ La integral que tenemos esta incompleta por lo que agregaremos un 1
+> para completar una Gamma con parámetros $(a+y)$ y $(1+b)$: $$
+> =\frac{b^a}{y!\Gamma(a)}\Gamma(a+y)\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}dx
+> $$ $$
+> f_Y(y)=\frac{b^a\Gamma(a+y)}{y!\Gamma(a)}
+> $$ Ahora podemos encontrar la densidad condicional $f(x|y)$:
+> $$f(x|y)=\frac{f(x,y)}{f_Y(y)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{b^a\Gamma(a+y)}{y!\Gamma(a)}}$$
+> Simplificamos y obtenemos:
+> $$f(x|y)=\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}$$ Identificamos que
+> la distribución condicional $f(x|y)$ es una distribución Gamma con
+> parámetros $\alpha=(a+y)$ y $\beta=(1+b)$
 
 -   Mostrar que la densidad condicional $f(y|x)$ es Poisson.
 
->Para encontrar la densidad condicional $f(y∣x)$, primero necesitamos
-encontrar la densidad marginal de $X$,$f_X(x)$ ya que la densidad
-condicional se define como:
-$$f(y|x)=\frac{f(x,y)}{f_X(x)}$$ Dada la función de distribución
-conjunta, podemos encontrar la densidad marginal de $X$ sumando para
-todos los posibles varores de $y$:
-$$ f_X(x)=\sum_{y=0}^{\infty}f(x,y) $$
-$$ =\sum_{y=0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}$$
-Se sacan de la sumatoria los terminos que no depende de $y$, quedando:
-$$
- =\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}\frac{e^{-x}x^{a+y-1}}{y!}
-$$
-$$
-=\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}e^{-x}\left(\frac{x^{a+y-1}}{y!}\right)
-$$
-$$
-=\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}\sum_{y=0}^{\infty} x^{a-1} \frac{x^y}{y!}
-$$
-$$
-=\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}e^{x}x^{a-1}
-$$
-$$
-f_X(x)=\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1}
-$$
-Entonces la densidad condicional de $f(y|x)$ es:
-$$f(y|x)=\frac{f(x,y)}{f_X(x)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1}}$$
-$$
-f(y|x)=\frac{e^{-x}x^y}{y!} \quad \sim Possion(x)
-$$
+> Para encontrar la densidad condicional $f(y|x)$, primero necesitamos
+> encontrar la densidad marginal de $X$,$f_X(x)$ ya que la densidad
+> condicional se define como: $$f(y|x)=\frac{f(x,y)}{f_X(x)}$$ Dada la
+> función de distribución conjunta, podemos encontrar la densidad
+> marginal de $X$ sumando para todos los posibles varores de $y$:
+> $$ f_X(x)=\sum_{y=0}^{\infty}f(x,y) $$
+> $$ =\sum_{y=0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}$$
+> Se sacan de la sumatoria los terminos que no depende de $y$, quedando:
+> $$
+> =\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}\frac{e^{-x}x^{a+y-1}}{y!}
+> $$ $$
+> =\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}e^{-x}\left(\frac{x^{a+y-1}}{y!}\right)
+> $$ $$
+> =\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}\sum_{y=0}^{\infty} x^{a-1} \frac{x^y}{y!}
+> $$ $$
+> =\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}e^{x}x^{a-1}
+> $$ $$
+> f_X(x)=\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1}
+> $$ Entonces la densidad condicional de $f(y|x)$ es:
+> $$f(y|x)=\frac{f(x,y)}{f_X(x)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1}}$$
+> $$
+> f(y|x)=\frac{e^{-x}x^y}{y!} \quad \sim Possion(x)
+> $$
 
 -   Escriban una función para implementar el Gibbs sampler cuando las
     constantes son dadas con valores $a=1$ y $b=1$.
@@ -308,17 +413,32 @@ E_Y |> gt()
     vecinos de dichos éxitos (horizontales o verticales) que difieren.
     Por ejemplo,
 
-```{=tex}
-\begin{equation}
-\begin{pmatrix}
-1 & 0 & 0 $ 0\\
-0 & 0 & 0 $ 0\\
-0 & 0 & 0 $ 0\\
-0 & 0 & 0 $ 0
-\end{pmatrix}
-\end{equation}
-```
-\*\*\*\*\*aqui faltan otras matrices
+$$
+X \quad \quad \quad \quad \quad \quad \quad \quad \quad N(X)
+\quad \quad \quad \quad \quad \quad \quad \quad \quad D(X)
+$$
+
+$$
+\begin{bmatrix}
+1 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0
+\end{bmatrix}
+\quad \quad \quad \quad \quad \quad \quad \quad \quad 1
+\quad \quad \quad \quad \quad \quad \quad \quad \quad 2
+$$
+
+$$
+\begin{bmatrix}
+1 & 1 & 0 & 0 \\
+0 & 1 & 0 & 0 \\
+0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0
+\end{bmatrix}
+\quad \quad \quad \quad \quad \quad \quad \quad \quad 3
+\quad \quad \quad \quad \quad \quad \quad \quad \quad 5
+$$
 
 Noten que si se escriben los elementos de $X$ en un vector $V$ ,
 entonces existe una matriz $M$ de 24 × 16 tal que $D(X)$ es la suma de
@@ -341,32 +461,30 @@ Ambas $q$’s son simétricas, irreducibles y tienen diagonales positivas.
 La primera se mueve más rápido que la segunda. Estamos interesados en la
 probabilidad de que todos los elementos de la diagonal sean 1. Usen las
 dos $q$’s para estimar la probabilidad de 1’s en la diagonal para
-$λ=0, 1,3$ y $p=0.5,0.8$. Esto se puede hacer calculando la fracción
-acumulada de veces que la cadena tiene 1’s sobre la diagonal conforme se
-muestrea de la cadena. Comparar los resultados de las 2 cadenas. Tienen
-el mismo valor asintótico, pero ¿una cadena llega más rápido que la
-otra? ¿Alguna cadena muestra más autocorrelación que la otra (por
-ejemplo, estimados de la probabilidad en 100 pasos sucesivos muestran
-más correlación para una cadena que para la otra?). En este problema,
-también determinen cuántas simulaciones hay que hacer, para desechar el
-periodo de calentamiento.
+$\lambda=0, 1,3$ y $p=0.5,0.8$. Esto se puede hacer calculando la
+fracción acumulada de veces que la cadena tiene 1’s sobre la diagonal
+conforme se muestrea de la cadena. Comparar los resultados de las 2
+cadenas. Tienen el mismo valor asintótico, pero ¿una cadena llega más
+rápido que la otra? ¿Alguna cadena muestra más autocorrelación que la
+otra (por ejemplo, estimados de la probabilidad en 100 pasos sucesivos
+muestran más correlación para una cadena que para la otra?). En este
+problema, también determinen cuántas simulaciones hay que hacer, para
+desechar el periodo de calentamiento.
 
 6.  Considera los siguientes números:
     $$0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2$$ Usen la
-    distribución exponencial $Y_i\sim exp(θ)$ para modelar estos datos y
-    asignen una inicial sobre $log θ$.
+    distribución exponencial $Y_i\sim exp(\theta)$ para modelar estos
+    datos y asignen una inicial sobre $log(\theta)$.
 
-<!-- -->
-
-a)  Definan los datos enWinBUGS (u OpenBUGS). Usen $θ=1$ como valor
+a)  Definan los datos enWinBUGS (u OpenBUGS). Usen $\theta=1$ como valor
     inicial.
 b)  Escriban el código para el modelo.
 c)  Compilen el modelo y obtengan una muestra de 1000 iteraciones
     después de descartar las 500 iteraciones iniciales como burnin.
 d)  Monitoreen la convergencia gráficamente usando gráficas ’trace’ y de
     autocorrelación.
-e)  Obtengan estadísticas sumarias posteriores y densidades para $θ$,
-    $1/θ$ y $log θ$
+e)  Obtengan estadísticas sumarias posteriores y densidades para
+    $\theta$, $1/\theta$ y $log(\theta)$
 f)  Con los datos el primer inciso, ahora usen las distribuciones (i)
     gamma (ii) log-normal para modelar los datos, así como (iii) normal
     para los logaritmos de los valores originales. En todos los modelos
