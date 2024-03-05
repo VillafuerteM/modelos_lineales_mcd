@@ -229,12 +229,6 @@ plot(model_fit3)
     $$f(x|y)\propto ye^{-yx} \quad 0<x<B<\infty$$
     $$f(y|x)\propto xe^{-xy} \quad 0<y<B<\infty$$
 
-3.  Consideren las siguientes dos distribuciones condicionales
-    completas, analizadas en el artículo de Casella y George (1992) que
-    les incluí como lectura:
-    $$f(x|y)\propto ye^{-yx} \quad 0<x<B<\infty$$
-    $$f(y|x)\propto xe^{-xy} \quad 0<y<B<\infty$$
-
 -   Obtener un estimado de la distribución marginal de $X$ cuando
     $B = 10$ usando el Gibbs sampler.
 
@@ -306,6 +300,8 @@ ggplot(data = data.frame(X), aes(x = X)) +
     de la cadena en la densidad.
 -   Usando la muestra simulada de una "buena" elección de $C$, aproximar
     la probabilidad $P(6 < Y < 8)$.
+    
+
 
 4.  Supongan que el vector $(X,Y)$ tiene función de distribución
     conjunta:
