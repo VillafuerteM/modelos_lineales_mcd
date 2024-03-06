@@ -20,6 +20,7 @@ library(MASS)
 library(patchwork)
 library(R2OpenBUGS)
 library(rjags)
+library(coda)
 ```
 
 Fecha de entrega: 06 de marzo 2024.
@@ -63,7 +64,6 @@ código para implementar este modelo es el que sigue:
 w_vec <- c(1.6907,  1.7242, 1.7552 ,1.7842, 1.8113, 1.8369, 1.8610, 1.8839) 
 y_vec <- c(6, 13, 18, 28, 52, 53, 61, 60)
 n_vec <- c(59, 60, 62, 56, 63, 59, 62, 60)
-p_vec <- y_vec/n_vec
 
 par(mfrow =c(3,2))
 
@@ -95,21 +95,25 @@ beta ~ dnorm(0.0,1.0e-3)
 } ", file="jags_model01a.txt")
 
 ##
-data01 <- list("k"=length(n), "y"=y_vec, "w"=w_vec, "n"=n_vec)
+data01 <- list("k"=length(n_vec), "y"=y_vec, "w"=w_vec, "n"=n_vec)
 m1a <- jags.model(file = "jags_model01a.txt",
                    data = data01, 
                    n.chains = 20,
                    n.adapt = 1000) # burn-in
-update(m1,1000)
+update(m1a,1000)
 
-za <- jags.samples(m1a, c("alpha", "beta"), 1000, type = c("trace"))
+za <- jags.samples(m1a, c("alpha", "beta", "p"), 1000, type = c("trace"))
 
 
 ## data frame with results
-results_df_P1 <- data.frame(N = 1:length(za$alpha), 
-                            logit_alpha = za$alpha, 
-                            logit_beta = za$beta)
+results_df_P1 <- data.frame(N = max(length(za$alpha)), 
+                            logit_alpha = mean(za$alpha), 
+                            logit_beta = mean(za$beta), 
+                            logit_p = mean(za$p))
+
+results_df_P1 %>% gt()
 ```
+
 ##probit
 
 ```{r}
@@ -118,7 +122,7 @@ cat("model{
 for (i in 1:k){
     y[i] ~ dbin(p[i],n[i])
     # logit(p[i]) <- alpha + beta*(w[i]-mean(w[]))
-    probit(p[i]) <- alpha + beta*(w[i]-mean(w[])
+    probit(p[i]) <- alpha + beta*(w[i]-mean(w[]))
     # cloglog(p[i]) <- alpha + beta*(w[i]-mean(w[])
   }
   alpha ~ dnorm(0.0,1.0e-3)
@@ -126,49 +130,54 @@ for (i in 1:k){
 } ", file="jags_model01b.txt")
 
 ##
-data01 <- list("k"=length(n), "y"=y_vec, "w"=w_vec, "n"=n_vec)
-m1b <- jags.model(file = "jags_model01.txt",
+data01 <- list("k"=length(n_vec), "y"=y_vec, "w"=w_vec, "n"=n_vec)
+m1b <- jags.model(file = "jags_model01b.txt",
                    data = data01, 
                    n.chains = 20,
                    n.adapt = 1000) # burn-in
 update(m1b,1000)
 
-zb <- jags.samples(m1b, c("alpha", "beta"), 1000, type = c("trace"))
+zb <- jags.samples(m1b, c("alpha", "beta", "p"), 1000, type = c("trace"))
 
 
 
 ## add results
-results_df_P1 <- results_df_P1 %>% mutate(probit_alpha = zb$alpha, 
-                                          probit_beta = zb$beta)
-
+results_df_P1 <- results_df_P1 %>% mutate(probit_alpha = mean(zb$alpha), 
+                                          probit_beta = mean(zb$beta), 
+                                          probit_p = mean(zb$p))
+results_df_P1 %>% gt()
 ```
+
 ##cloglog
+
 ```{r}
 cat("model{
 for (i in 1:k){
     y[i] ~ dbin(p[i],n[i])
     # logit(p[i]) <- alpha + beta*(w[i]-mean(w[]))
     # probit(p[i]) <- alpha + beta*(w[i]-mean(w[])
-    cloglog(p[i]) <- alpha + beta*(w[i]-mean(w[])
+    cloglog(p[i]) <- alpha + beta*(w[i]-mean(w[]))
   }
   alpha ~ dnorm(0.0,1.0e-3)
   beta ~ dnorm(0.0,1.0e-3)
 } ", file="jags_model01c.txt")
 
 ##
-data01 <- list("k"=length(n), "y"=y_vec, "w"=w_vec, "n"=n_vec)
-m1c <- jags.model(file = "jags_model01.txt",
+data01 <- list("k"=length(n_vec), "y"=y_vec, "w"=w_vec, "n"=n_vec)
+m1c <- jags.model(file = "jags_model01c.txt",
                    data = data01, 
                    n.chains = 20,
                    n.adapt = 1000) # burn-in
-update(m1,1000)
+update(m1c,1000)
 
-zc <- jags.samples(m1c, c("alpha", "beta"), 1000, type = c("trace"))
+zc <- jags.samples(m1c, c("alpha", "beta", "p"), 1000, type = c("trace"))
 
 
 ##
-results_df_P1 <- results_df_P1 %>% mutate(cloglog_alpha = zc$alpha, 
-                                          cloglog_beta = zc$beta)
+results_df_P1 <- results_df_P1 %>% mutate(cloglog_alpha = mean(zc$alpha), 
+                                          cloglog_beta = mean(zc$beta),
+                                          cloglog_p = mean(zc$p))
+results_df_P1 %>% gt()
 ```
 
 ```{r}
@@ -183,4 +192,134 @@ hist(zb$beta,breaks = 50,prob=T)
 hist(zc$beta,breaks = 50,prob=T)
 ```
 
+2.  Consideren las siguientes dos distribuciones condicionales
+    completas, analizadas en el artículo de Casella y George (1992) que
+    les incluí como lectura:
+
+    $f(x|y) ∝ y e^{-yx}$ $0 < x < B < ∞$
+    $f(y|x) ∝ x e^{-xy}$ $0 < y < B < ∞$
+
+- Obtener un estimado de la distribución marginal de X cuando B = 10 usando el Gibbs
+sampler.
+
+```{r}
+fxy <- function(x, y){
+  return(y*exp(-y*x))
+}
+fyx <- function(y, x){
+  return(x*exp(-x*y))
+}
+
+fx_marg <- function(x){
+  return(1/x)
+}
+
+B <- 10
+N <- 10000
+y0 <- 1
+X <- NULL
+fx <- NULL
+Y <- y0
+for(k in 1:N){
+  xi <- runif(1, 0, B)
+  
+  X <- append(X, xi)
+  fx <- append(fx, fx_marg(xi))
+  X <- append(X, xi)
+}
+
+results_df_P2a <- data.frame(x = X, y=fx)
+results_df_P2a_order <- results_df_P2a[order(results_df_P2a$x),]
+ggplot(results_df_P2a, aes( x=x, y = y)) + 
+  geom_point()
+```
+
+
+
+- Ahora supongan que $B = ∞$ así que las distribuciones condicionales completas son
+ahora las ordinarias distribuciones exponenciales no truncadas. Mostrar analíticamente
+que $f_x(t) = 1/t$ es una solución a la ecuación integral en este caso:
+
+$f_x(x)=\int{[\int f_{x|y}(x|y) f_{y|x}(y|x) dy] f_x(t)dt}$
+
+¿El Gibbs sampler convergerá a esta solución?
+
+3.  Supongan que una variable aleatoria y se distribuye de acuerdo a la
+    densidad poli-Cauchy:
+    $g(y) = \prod_i^n{\frac{1}{\pi (1+(y-a_i)^2)}}$
+
+donde $a = (a1, . . . a_n)$ es un vector de parámetros. Supongan que
+$n = 6$ y $a = (1, 2, 2, 6, 7, 8)$.
+
+-   Escriban una función que calcule la log-densidad de y.
+
+```{r}
+logy <- function(vec_a, y){
+  logg_y <- 0
+  for (k in 1:length(vec_a)){
+    arg_log <- pi*(1 + (y-vec_a[k])^2)
+    logg_y <- logg_y - log(arg_log)
+  }
+  return(logg_y)
+}
+
+```
+
+
+-   Escriban una función que tome una muestra de tamaño 10,000 de la
+    densidad de y, usando Metropolis-Hastings con función propuesta una
+    caminata aleatoria con desviación estandar C. Investiguen el efecto
+    de la elección de C en la tasa de aceptación, y la mezcla de la
+    cadena en la densidad.
+
+```{r}
+vec_a <- c(1,2,2,6,7,8)
+n = 6
+N = 10000
+
+y <- runif(1)
+f_x = logy(vec_a, y)
+mu_f = 0
+var_f = c(100, 10, 1, 0.1, 0.01, .001)
+acceptance_count_vec <- NULL
+for (m in var_f){
+    acceptance_count = 0
+    for (k in 1:N){
+      y_new <- y + rnorm(1, mu_f, m)
+      f_x_new <- logy(vec_a, y_new)
+      acceptance <- min(1, y*f_x_new/(y_new*f_x))
+      compar_value = runif(1)
+      y_vec <- append(y_vec, ifelse(compar_value<acceptance, y_new, y))
+      f_x <- ifelse(compar_value<acceptance, f_x_new, f_x)
+      if(compar_value<acceptance){
+        acceptance_count = acceptance_count + 1
+      }
+    y <- y_vec[length(y_vec)]
+    }
+   acceptance_count_vec <- append(acceptance_count_vec, acceptance_count)
+}
+results_df_P3 <- data.frame(var_vec = var_f,
+                            acceptance_count_vec)
+
+results_df_P3 %>% gt()
+```
+
+
+-   Usando la muestra simulada de una “buena” elección de C, aproximar
+    la probabilidad P(6 \< Y \< 8).
+    
+    
+4. Supongan que el vector (X, Y ) tiene función de distribución conjunta:
+
+y deseamos simular de la densidad conjunta.
+
+- Mostrar que la densidad condicional $f(x|y)$ es una Gamma e identificar los parámetros.
+- Mostrar que la densidad condicional $f(y|x)$ es Poisson.
+- Escriban una función para implementar el Gibbs sampler cuando las constantes son
+dadas con valores $a = 1$ y $b = 1$.
+-Con su función, escriban 1000 ciclos del Gibbs sampler y de la salida, hacer los histogramas
+y estimar $E(Y )$.
+
+
+5. Supongan que se tiene una matriz de 4 × 4 de variables aleatorias Bernoulli, y la denotamos por $[X_{ij} ]$, y sea $N(X)$ el número total de éxitos en $X$ (la suma de $X$) y $D(X)$ es el total de vecinos de dichos éxitos (horizontales o verticales) que difieren. Por ejemplo,
 
