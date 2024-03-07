@@ -307,7 +307,55 @@ results_df_P3 %>% gt()
 
 -   Usando la muestra simulada de una “buena” elección de C, aproximar
     la probabilidad P(6 \< Y \< 8).
-    
+
+Suponmos que una buena C es 0.1.
+
+```{r}
+vec_a <- c(1,2,2,6,7,8)
+n = 6
+N = 10000
+for(t in 1:N/100){
+  y <- runif(1)
+  f_x = logy(vec_a, y)
+  mu_f = 0
+  var_f = c(0.1)
+  acceptance_count_vec <- NULL
+  P_vec <- NULL
+  for (m in var_f){
+      acceptance_count = 0
+      for (k in 1:N){
+        y_new <- y + rnorm(1, mu_f, m)
+        f_x_new <- logy(vec_a, y_new)
+        acceptance <- min(1, y*f_x_new/(y_new*f_x))
+        compar_value = runif(1)
+        y_vec <- append(y_vec, ifelse(compar_value<acceptance, y_new, y))
+        f_x <- ifelse(compar_value<acceptance, f_x_new, f_x)
+        if(compar_value<acceptance){
+          acceptance_count = acceptance_count + 1
+        }
+      y <- y_vec[length(y_vec)]
+      }
+  }
+  acceptance_count_vec <- append(acceptance_count_vec, acceptance_count)
+  
+  low_lim <- 6
+  up_lim <- 8
+  
+  values_smaller_equal_than_low_lim <- results_df_P3c$Y[results_df_P3c$Y<=low_lim]
+  
+  values_smaller_equal_than_up_lim <- results_df_P3c$Y[results_df_P3c$Y<=up_lim]
+  n_low <- length(values_smaller_equal_than_low_lim)
+  n_up <- length(values_smaller_equal_than_up_lim)
+  n_total <- length(results_df_P3c$Y)
+  P <- (n_up-n_low)/n_total
+  P_vec <- append(P_vec, P)
+}
+results_df_P3cP <- data.frame(P_vec, 
+                              acceptance_count_vec)
+
+
+```
+
     
 4. Supongan que el vector (X, Y ) tiene función de distribución conjunta:
 
