@@ -299,9 +299,12 @@ for (m in var_f){
    acceptance_count_vec <- append(acceptance_count_vec, acceptance_count)
 }
 results_df_P3 <- data.frame(var_vec = var_f,
-                            acceptance_count_vec)
+                        acceptance_count_vec,
+                        var = c("100", "10", "1", "0.1", "0.01", ".001"))
 
-results_df_P3 %>% gt()
+ggplot(results_df_P3, aes(x=var, y=acceptance_count_vec)) +
+     geom_bar(stat="identity")
+
 ```
 
 
@@ -351,7 +354,8 @@ for(t in 1:N/100){
   P_vec <- append(P_vec, P)
 }
 results_df_P3cP <- data.frame(P_vec, 
-                              acceptance_count_vec)
+                              acceptance_count_vec
+                             )
 
 
 ```
