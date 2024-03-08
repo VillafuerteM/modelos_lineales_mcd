@@ -10,6 +10,7 @@ authors:
 ---
 
 ```{r librerias, echo=FALSE, message=FALSE, warning=FALSE}
+library(bayesplot)
 library(tidyverse)
 library(cmdstanr)
 library(gt)
@@ -106,6 +107,203 @@ fit_logit$summary() |>
 ```
 
 \newpage
+
+5.  Supongan que se tiene una matriz de $4 × 4$ de variables aleatorias Bernoulli, y la denotamos por $[X_{ij}]$, y sea $N(X)$ el número total de éxitos en $X$ (la suma de $X$) y $D(X)$ es el total de vecinos de dichos éxitos (horizontales o verticales) que difieren. Por ejemplo:
+
+$$
+\begin{array}{ccc}    X & N(X) & D(X) \\    \left( \begin{array}{cccc}    1 & 0 & 0 & 0 \\    0 & 0 & 0 & 0 \\    0 & 0 & 0 & 0 \\    \end{array} \right) & 1 & 2 \\    \\    \left( \begin{array}{ccc}    1 & 1 & 0 \\    0 & 1 & 0 \\    0 & 0 & 0 \\    \end{array} \right) & 3 & 5 \\\end{array}
+$$
+
+Noten que si se escriben los elementos de $X$ en un vector $V$ , entonces existe una matriz $M$ de $24 × 16$ tal que $D(X)$ es la suma de los valores absolutos de $MV$ . El 24 surge porque hay 24 pares de vecinos a revisar. Supongan que $\pi(X)$, la distribución de $X$, es proporcional a
+
+$$
+\pi(X) \propto p^{N(X)} (1-p)^{16-N(X)} exp(-\lambda D(X))
+$$
+
+Si $\lambda = 0$, las variables son iid Bernoulli (p).\
+Usar el método de Metropolis-Hastings usando los siguientes kerneles de transición.
+
+Hay 216 posibles estados, uno por cada posible valor de $X$.
+
+a.  Sea $q_1$ tal que cada transición es igualmente plausible con probabilidad $1/216$. Esto es, el siguiente estado candidato para $X$ es simplemente un vector de $16$ iid Bernoulli (p).
+
+b.  Sea $q_2$ tal que se elige una de las $16$ entradas en $X$ con probabilidad $1/16$, y luego se\
+    determina el valor de la celda a ser 0 o 1 con probabilidad 0.5 en cada caso. Entonces\
+    sólo un elemento de $X$ puede cambiar en cada transición a lo más.
+
+Ambas $q$ son simétricas, irreducibles y tienen diagonales positivas. La primera se mueve\
+más rápido que la segunda.\
+Estamos interesados en la probabilidad de que todos los elementos de la diagonal sean\
+1. Usen las dos $q$ para estimar la probabilidad de 1’s en la diagonal para $\lambda = 0, 1, 3$ y $p=0.5, 0.8$. Esto se puede hacer calculando la fracción acumulada de veces que la cadena tiene 1’s sobre la diagonal conforme se muestrea de la cadena. Comparar los resultados de las 2 cadenas. Tienen el mismo valor asintótico, pero ¿una cadena llega más rápido que laotra? ¿Alguna cadena muestra más autocorrelación que la otra (por ejemplo, estimados de la probabilidad en 100 pasos sucesivos muestran más correlación para una cadena que para la otra?).\
+En este problema, también determinen cuántas simulaciones hay que hacer, para desechar el periodo de calentamiento.
+
+```{r}
+# funciones
+pi <- function(X, p, lambda) {
+  N_X <- sum(X)
+  D_X <- D(X)
+  return((p^N_X) * ((1 - p)^(16 - N_X)) * exp(-lambda * D_X))
+}
+
+D <- function(X) {
+  differences <- 0
+  for (i in 1:4) {
+    for (j in 1:4) {
+      if (j < 4) {
+        differences <- differences + as.numeric(X[i, j] != X[i, j+1])
+      }
+      if (i < 4) {
+        differences <- differences + as.numeric(X[i, j] != X[i+1, j])
+      }
+    }
+  }
+  return(differences)
+}
+
+q1_generate <- function(p) {
+  return(matrix(rbinom(16, 1, p), nrow = 4, ncol = 4))
+}
+
+q2_generate <- function(X) {
+  X_prime <- X
+  i <- sample(1:4, 1)
+  j <- sample(1:4, 1)
+  X_prime[i, j] <- 1 - X_prime[i, j]
+  return(X_prime)
+}
+
+metropolis_hastings_step <- function(X, p, lambda, kernel) {
+  if (kernel == 'q1') {
+    X_prime <- q1_generate(p)
+  } else if (kernel == 'q2') {
+    X_prime <- q2_generate(X)
+  }
+  acceptance_prob <- min(1, pi(X_prime, p, lambda) / pi(X, p, lambda))
+  if (runif(1) < acceptance_prob) {
+    return(X_prime)
+  } else {
+    return(X)
+  }
+}
+
+simulate_metropolis_hastings <- function(p, lambda, kernel, n_steps = 10000) {
+  X <- matrix(rbinom(16, 1, p), nrow = 4, ncol = 4)
+  diagonal_ones_history <- numeric(n_steps)
+  for (step in 1:n_steps) {
+    X <- metropolis_hastings_step(X, p, lambda, kernel)
+    diagonal_ones_history[step] <- all(diag(X) == 1)
+  }
+  return(cumsum(diagonal_ones_history) / (1:n_steps))
+}
+
+# Parámetros
+p <- 0.5
+lambda <- 0
+n_steps <- 10000
+
+# Simulaciones para ambos kerneles
+probability_history_q1 <- simulate_metropolis_hastings(p, lambda, 'q1', n_steps)
+probability_history_q2 <- simulate_metropolis_hastings(p, lambda, 'q2', n_steps)
+
+# Graficar la convergencia de las probabilidades
+df <- data.frame(Step = 1:n_steps, Probability_q1 = probability_history_q1, Probability_q2 = probability_history_q2)
+df_melt <- reshape2::melt(df, id.vars = "Step", variable.name = "Kernel", value.name = "Probability")
+
+ggplot(df_melt, aes(x = Step, y = Probability, colour = Kernel)) +
+  geom_line() +
+  labs(title = "Convergencia de las Probabilidades Estimadas",
+       x = "Pasos", y = "Probabilidad estimada de 1s en la diagonal") +
+  theme_minimal()
+
+```
+
+\newpage
+
+6.  Considera los siguientes números:
+
+$$
+0.4, \ 0.01, \ 0.2, \ 0.1, \ 2.1, \ 0.1, \ 0.9, \ 2.4, \ 0.1, \ 0.2
+$$\
+Usen la distribución exponencial $Y_i ∼ exp (\theta)$ para modelar estos datos y asignen una inicial sobre $log(\theta)$.\
+
+a.  Definan los datos en WinBUGS (u OpenBUGS). Usen $\theta = 1$ como valor inicial.
+
+b.  Escriban el código para el modelo.
+
+c.  Compilen el modelo y obtengan una muestra de 1000 iteraciones después de descartar las 500 iteraciones iniciales como burnin.
+
+d.  Monitoreen la convergencia gráficamente usando gráficas ’trace’ y de autocorrelación.
+
+e.  Obtengan estadísticas sumarias posteriores y densidades para θ, 1/θ y log θ
+
+f.  Con los datos el primer inciso, ahora usen las distribuciones (i) gamma (ii) log-normal\
+    para modelar los datos, así como (iii) normal para los logaritmos de los valores origi-\
+    nales. En todos los modelos hagan un ejercicio similar al de los numerales previos, y\
+    comparen los resultados obtenidos bajo todos los modelos. Hagan todos los supuestos que tengan que hacer.
+
+```{r}
+# Datos observados
+datos_obs <- c(0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2)
+
+# Valor inicial para theta
+theta_inicial <- 1
+```
+
+```{r}
+# Compile the model
+mod <- cmdstan_model("modelo_p6_exp.stan")
+
+# Prepare the data for Stan
+stan_data <- list(N = length(datos_obs), 
+                  y = datos_obs, 
+                  theta0 = theta_inicial)
+
+# Run the MCMC sampler
+fit <- mod$sample(
+  data = stan_data,
+  seed = 156057,
+  chains = 4,
+  parallel_chains = 4,
+  iter_warmup = 500,
+  iter_sampling = 1000,
+  refresh = 0
+)
+
+# Print the summary of the fit
+fit_summary <- fit$summary()
+print(fit_summary)
+
+```
+
+```{r}
+# Extraer las muestras
+samples <- as.data.frame(fit$draws(variables='theta')) %>%
+  mutate(num_sample=seq(1,1000, by=1))%>%
+  pivot_longer(cols=-c(num_sample),
+               names_to='corrida', 
+               values_to='theta_value')
+
+ggplot(samples, aes(x=num_sample, y=theta_value))+
+  geom_line() +
+  facet_grid(~corrida) +
+  theme_minimal()
+
+```
+
+```{r}
+acf(samples%>%
+      filter(corrida=='1.theta')%>%
+      select(theta_value))
+acf(samples%>%
+      filter(corrida=='2.theta')%>%
+      select(theta_value))
+acf(samples%>%
+      filter(corrida=='3.theta')%>%
+      select(theta_value))
+acf(samples%>%
+      filter(corrida=='4.theta')%>%
+      select(theta_value))
+```
 
 ## Anexo
 
