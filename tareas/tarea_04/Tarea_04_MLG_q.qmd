@@ -279,9 +279,16 @@ for (i in 1:5000) {
       temp_y = y[j] }     }
   X[i] = x[k]
   Y[i] = y[k] }
+```
 
-ggplot(data = data.frame(X), aes(x = X)) +
-  geom_histogram(bins = 40, aes(y = after_stat(density)), color = "black", fill = "steelblue", alpha = 0.7) +
+```{r echo=FALSE}
+ggplot(data = data.frame(X), 
+       aes(x = X)) +
+  geom_histogram(bins = 40, 
+                 aes(y = after_stat(density)), 
+                 color = "black", 
+                 fill = "steelblue", 
+                 alpha = 0.7) +
   ggtitle("Histograma de X") +
   xlab("X") +
   ylab("Densidad")
@@ -339,12 +346,13 @@ results3 <- lapply(proposal_std_devs, function(proposal_std_dev) {
   samples <- result$samples
   return(list(proposal_std_dev = proposal_std_dev, accep_rate = accep_rate, samples = samples))
 })
+```
 
+```{r echo=FALSE}
 for (result in results3) {
   cat("Desviación estándar propuesta:", result$proposal_std_dev, "\n")
   cat("Tasa de aceptación:", result$accep_rate, "\n\n")
 }
-
 ```
 
 -   Usando la muestra simulada de una "buena" elección de $C$, aproximar la probabilidad $P(6 < Y < 8)$.
@@ -355,8 +363,10 @@ select_result <- results3[[1]]
 samples_interval <- select_result$samples[select_result$samples > 6 & select_result$samples < 8]
 prob_est <- length(samples_interval) / length(select_result$samples)
 
-cat("Aproximación de la probabilidad P(6 < Y < 8):", prob_est, "\n")
+```
 
+```{r echo=FALSE}
+cat("Aproximación de la probabilidad P(6 < Y < 8):", prob_est, "\n")
 ```
 
 4.  Supongan que el vector $(X,Y)$ tiene función de distribución conjunta: $$f(x,y)=\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}, \quad x>0, \quad y=0,1,2,...$$ y deseamos simular de la densidad conjunta.
@@ -417,16 +427,19 @@ gibbs <- function(n, a, b){
 
 ```{r}
 res4 <- gibbs(1000, 1, 1)
+```
 
+```{r echo=FALSE}
 ggplot(data = res4, aes(x = x)) +
   geom_histogram(bins = 40, aes(y = ..density..), color = "black", fill = "slateblue3", alpha = 0.7) +
   ggtitle("Histograma de X") +
   xlab("X") +
   ylab("Densidad")
+```
 
+```{r echo=FALSE}
 E_Y <- data.frame(E_Y = mean(res4$y))
 E_Y |> gt()
-
 ```
 
 5.  Supongan que se tiene una matriz de $4×4$ de variables aleatorias Bernoulli, y la denotamos por $[X_{ij}]$, y sea $N(X)$ el número total de éxitos en $X$ (la suma de $X$) y $D(X)$ es el total de vecinos de dichos éxitos (horizontales o verticales) que difieren. Por ejemplo,
