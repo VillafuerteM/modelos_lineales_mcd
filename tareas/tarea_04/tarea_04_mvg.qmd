@@ -99,13 +99,15 @@ fit_logit <- mod_logit$sample(
 
 ```{r echo=FALSE}
 fit_logit$summary() |> 
-  select(variable, mean, sd, q5, q95) |>
-  gt() |> 
-  fmt_number() |>
+  select(variable, mean, sd, q5, q95) |> #tabla que quieres
+  gt() |> # la pones bonita
+  fmt_number() |> # redondea a 2 decimales las variables num
   tab_header(
-    title='Logit model'
+    title='Logit model' # agrega el titulo
   )
 ```
+
+Hacemos lo mismo pero para probit y log log usando los modelos correspondientes que igualmente ponemos en el Anexo.
 
 \newpage
 
@@ -210,8 +212,10 @@ probability_history_q2 <- simulate_metropolis_hastings(p, lambda, 'q2', n_steps)
 df <- data.frame(Step = 1:n_steps, Probability_q1 = probability_history_q1, Probability_q2 = probability_history_q2)
 df_melt <- reshape2::melt(df, id.vars = "Step", variable.name = "Kernel", value.name = "Probability")
 
-ggplot(df_melt, aes(x = Step, y = Probability, colour = Kernel)) +
-  geom_line() +
+ggplot(df_melt, aes(x = Step, 
+                    y = Probability, 
+                    colour = Kernel)) +
+  geom_line(size=1.5) +
   labs(title = "Convergencia de las Probabilidades Estimadas",
        x = "Pasos", 
        y = "Probabilidad estimada de 1s en la diagonal") +

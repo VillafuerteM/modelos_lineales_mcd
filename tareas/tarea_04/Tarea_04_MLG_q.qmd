@@ -285,7 +285,7 @@ for (i in 1:5000) {
 ggplot(data = data.frame(X), 
        aes(x = X)) +
   geom_histogram(bins = 40, 
-                 aes(y = after_stat(density)), 
+                 aes(y = ..density..), 
                  color = "black", 
                  fill = "steelblue", 
                  alpha = 0.7) +
@@ -565,7 +565,10 @@ ggplot(df_melt,
 a)  Definan los datos enWinBUGS (u OpenBUGS). Usen $\theta=1$ como valor inicial.
 
 ```{r}
+# Datos observados
 datos_obs <- c(0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2)
+
+# Valor inicial para theta
 theta_inicial <- 1
 ```
 
@@ -610,19 +613,27 @@ fit <- mod$sample(
 )
 ```
 
+```{r echo=FALSE}
+fit_summary <- fit$summary()
+fit_summary |> 
+  select(variable, mean, sd, q5, q95) |>
+  gt() |> 
+  fmt_number()
+```
+
 d)  Monitoreen la convergencia gráficamente usando gráficas ’trace’ y de autocorrelación.
 
 ```{r}
 # Extraer las muestras
-samples <- as.data.frame(fit$draws(variables='theta')) |>
-  mutate(num_sample=seq(1,1000, by=1)) |>
+samples <- as.data.frame(fit$draws(variables='theta')) %>%
+  mutate(num_sample=seq(1,1000, by=1))%>%
   pivot_longer(cols=-c(num_sample),
                names_to='corrida', 
-               values_to='theta_value')
+               values_to='theta')
 ```
 
 ```{r echo=FALSE}
-ggplot(samples, aes(x=num_sample, y=theta_value)) +
+ggplot(samples, aes(x=num_sample, y=theta))+
   geom_line() +
   facet_wrap(~corrida) +
   theme_minimal()
@@ -631,18 +642,35 @@ ggplot(samples, aes(x=num_sample, y=theta_value)) +
 ```{r echo=FALSE}
 acf(samples |>
       filter(corrida=='1.theta') |>
-      select(theta_value))
+      select(theta))
 acf(samples |>
       filter(corrida=='2.theta') |>
-      select(theta_value))
+      select(theta))
 acf(samples |>
       filter(corrida=='3.theta') |>
-      select(theta_value))
+      select(theta))
 acf(samples |>
       filter(corrida=='4.theta') |>
-      select(theta_value))
+      select(theta))
 ```
 
 e)  Obtengan estadísticas sumarias posteriores y densidades para $\theta$, $1/\theta$ y $log(\theta)$
 
-f)  Con los datos el primer inciso, ahora usen las distribuciones (i)gamma (ii) log-normal para modelar los datos, así como (iii) normal para los logaritmos de los valores originales. En todos los modelos hagan un ejercicio similar al de los numerales previos, y comparen los resultados obtenidos bajo todos los modelos. Hagan todos los supuestos que tengan que hacer.
+```{r}
+samples %>%
+  mutate(inverso = 1 / theta,
+         logaritmo = log(theta)) %>%
+  summarize(across(c(theta, inverso, logaritmo),
+                   list(
+                     mean = ~ mean(.x, na.rm = TRUE),
+                     median = ~ median(.x, na.rm = TRUE),
+                     p5 = ~ quantile(.x, probs = 0.05, na.rm = TRUE),
+                     p95 = ~ quantile(.x, probs = 0.95, na.rm = TRUE)
+                   ),
+                   .names = "{.col}_{.fn}")) %>%
+  pivot_longer(everything(), names_to = c("statistic", ".value"), names_sep = "_") %>%
+  gt() %>% 
+  fmt_number()
+```
+
+e)  Con los datos el primer inciso, ahora usen las distribuciones (i)gamma (ii) log-normal para modelar los datos, así como (iii) normal para los logaritmos de los valores originales. En todos los modelos hagan un ejercicio similar al de los numerales previos, y comparen los resultados obtenidos bajo todos los modelos. Hagan todos los supuestos que tengan que hacer.

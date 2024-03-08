@@ -1,0 +1,3972 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Tarea 4 - Modelos Lineales Generalizados</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="Tarea_04_MLG_q_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Tarea_04_MLG_q_files/libs/quarto-html/quarto.js"></script>
+<script src="Tarea_04_MLG_q_files/libs/quarto-html/popper.min.js"></script>
+<script src="Tarea_04_MLG_q_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Tarea_04_MLG_q_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Tarea_04_MLG_q_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Tarea_04_MLG_q_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Tarea_04_MLG_q_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Tarea_04_MLG_q_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Tarea_04_MLG_q_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Tarea 4 - Modelos Lineales Generalizados</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<p><img src="ITAM.png" class="img-fluid"></p>
+<p>Fecha de entrega: 8 de marzo de 2024.</p>
+<ul>
+<li>Blanca E. García Manjarrez – 118886</li>
+<li>Mariano Villafuerte Gonzalez – 156057</li>
+<li>Thomas M. Rudolf - 169293</li>
+<li>Yuneri Pérez Arellano - 199813</li>
+</ul>
+<ol type="1">
+<li>Spiegelhalter et al.&nbsp;(1995) analiza la mortalidad del escarabajo del trigo en la siguiente tabla,usando BUGS.</li>
+</ol>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: center;">Dosis</th>
+<th style="text-align: center;">No Muertos</th>
+<th style="text-align: center;">No Expuestos</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;"><span class="math inline">\(w_i\)</span></td>
+<td style="text-align: center;"><span class="math inline">\(y_i\)</span></td>
+<td style="text-align: center;"><span class="math inline">\(n_i\)</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">1.6907</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">59</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">1.7242</td>
+<td style="text-align: center;">13</td>
+<td style="text-align: center;">60</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">1.7552</td>
+<td style="text-align: center;">18</td>
+<td style="text-align: center;">62</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">1.7842</td>
+<td style="text-align: center;">28</td>
+<td style="text-align: center;">56</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">1.8113</td>
+<td style="text-align: center;">52</td>
+<td style="text-align: center;">63</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">1.8369</td>
+<td style="text-align: center;">53</td>
+<td style="text-align: center;">59</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">1.8610</td>
+<td style="text-align: center;">61</td>
+<td style="text-align: center;">62</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">1.8839</td>
+<td style="text-align: center;">60</td>
+<td style="text-align: center;">60</td>
+</tr>
+</tbody>
+</table>
+<p>Estos autores usaron una parametrización usual en dos parámetros de la forma <span class="math inline">\(p_i\equiv P(muerte\mid w_i)\)</span>, pero comparan tres funciones ligas diferentes:</p>
+<p><span class="math display">\[logit:p_i= \frac{exp(\alpha+\beta z_i)}{1+exp(\alpha+\beta z_i)}\]</span> <span class="math display">\[probit:p_i= \Phi(\alpha+\beta z_i)\]</span> <span class="math display">\[complementario \quad log-log:p_i=1-exp[-exp(\alpha+\beta z_i)]\]</span> en donde se usa la covariada centrada <span class="math inline">\(z_i=w_i-\bar{w}\)</span> para reducir la correlación entre la ordenada <span class="math inline">\(\alpha\)</span> y la pendiente <span class="math inline">\(\beta\)</span>. En OpenBUGS el código para implementar este modelo es el que sigue:</p>
+<pre><code>model{
+for (i in 1:k){
+y[i] ~ dbin(p[i],n[i])
+logit(p[i]) &lt;- alpha + beta*(w[i]-mean(w[])
+# probit(p[i]) &lt;- alpha + beta*(w[i]-mean(w[])
+# cloglog(p[i]) &lt;- alpha + beta*(w[i]-mean(w[])
+} #fin del loop i
+alpha ~ dnorm(0.0,1.0e-3)
+dbeta ~ dnorm(0.0,1.0e-3)
+} #fin del código</code></pre>
+<p>Lo que sigue al símbolo # es un comentario, así que esta versión corresponde al modelo logit. También dbin denota la distribución binomial y dnorm denota la distribución normal, donde el segundo argumento denota la precisión, no la varianza (entonces las iniciales normales para <span class="math inline">\(\alpha\)</span> y <span class="math inline">\(\beta\)</span> tienen precisión 0.001, que son aproximadamente iniciales planas (no informativas)). Hacer el análisis en OpenBUGS.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>dosis <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">1.6907</span>, <span class="fl">1.7242</span>, <span class="fl">1.7552</span>, <span class="fl">1.7842</span>, </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>           <span class="fl">1.8113</span>, <span class="fl">1.8369</span>, <span class="fl">1.8610</span>, <span class="fl">1.8839</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>muertos <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">6</span>, <span class="dv">13</span>, <span class="dv">18</span>, <span class="dv">28</span>, <span class="dv">52</span>, <span class="dv">53</span>, <span class="dv">61</span>, <span class="dv">60</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>expuestos <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">59</span>, <span class="dv">60</span>, <span class="dv">62</span>, <span class="dv">56</span>, <span class="dv">63</span>, <span class="dv">59</span>, <span class="dv">62</span>, <span class="dv">60</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>data_input <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">k =</span> <span class="fu">length</span>(muertos),</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">n =</span> expuestos,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> muertos,</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">w =</span> dosis <span class="sc">-</span> <span class="fu">mean</span>(dosis)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-output.var="model_p1_cloglog">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode stan code-with-copy"><code class="sourceCode stan"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; k; <span class="co">// observaciones</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; n; <span class="co">// expuestos</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; y; <span class="co">// muertos</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">real</span> w; <span class="co">// dosis</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">transformed data</span> {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span> w_mean = mean(w); <span class="co">// promedio de w para centrar</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="kw">parameters</span> {</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span> alpha;</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span> beta;</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="kw">transformed parameters</span> {</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">real</span> p; <span class="co">// probability of success</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span>:k) {</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    p[i] = <span class="dv">1</span> - exp(-exp(alpha + beta * (w[i] - w_mean))); <span class="co">// loglog</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="kw">model</span> {</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>  alpha ~ normal(<span class="dv">0</span>, <span class="dv">1000</span>); <span class="co">// inicial de alfa</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>  beta ~ normal(<span class="dv">0</span>, <span class="dv">1000</span>); <span class="co">// inicial de beta</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span>:k) {</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    y[i] ~ binomial(n[i], p[i]);</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Realiza el muestreo</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>model_fit <span class="ot">&lt;-</span> rstan<span class="sc">::</span><span class="fu">sampling</span>(model_p1_cloglog, </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>                             <span class="at">data =</span> data_input,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">refresh=</span><span class="dv">0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="pvqjnadmic" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#pvqjnadmic table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#pvqjnadmic thead, #pvqjnadmic tbody, #pvqjnadmic tfoot, #pvqjnadmic tr, #pvqjnadmic td, #pvqjnadmic th {
+  border-style: none;
+}
+
+#pvqjnadmic p {
+  margin: 0;
+  padding: 0;
+}
+
+#pvqjnadmic .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#pvqjnadmic .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#pvqjnadmic .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#pvqjnadmic .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#pvqjnadmic .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#pvqjnadmic .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#pvqjnadmic .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#pvqjnadmic .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#pvqjnadmic .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#pvqjnadmic .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#pvqjnadmic .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#pvqjnadmic .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#pvqjnadmic .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#pvqjnadmic .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#pvqjnadmic .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pvqjnadmic .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#pvqjnadmic .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#pvqjnadmic .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#pvqjnadmic .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pvqjnadmic .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#pvqjnadmic .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pvqjnadmic .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#pvqjnadmic .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pvqjnadmic .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#pvqjnadmic .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pvqjnadmic .gt_left {
+  text-align: left;
+}
+
+#pvqjnadmic .gt_center {
+  text-align: center;
+}
+
+#pvqjnadmic .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#pvqjnadmic .gt_font_normal {
+  font-weight: normal;
+}
+
+#pvqjnadmic .gt_font_bold {
+  font-weight: bold;
+}
+
+#pvqjnadmic .gt_font_italic {
+  font-style: italic;
+}
+
+#pvqjnadmic .gt_super {
+  font-size: 65%;
+}
+
+#pvqjnadmic .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#pvqjnadmic .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#pvqjnadmic .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#pvqjnadmic .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#pvqjnadmic .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#pvqjnadmic .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#pvqjnadmic .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_heading">
+      <td colspan="6" class="gt_heading gt_title gt_font_normal gt_bottom_border" style="">Resumen de Modelo log-log</td>
+    </tr>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="variable">variable</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean">mean</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="sd">sd</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="50%">50%</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="2.5%">2.5%</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="97.5%">97.5%</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="variable" class="gt_row gt_left">alpha</td>
+<td headers="mean" class="gt_row gt_right">−0.05</td>
+<td headers="sd" class="gt_row gt_right">0.08</td>
+<td headers="50%" class="gt_row gt_right">−0.04</td>
+<td headers="2.5%" class="gt_row gt_right">−0.20</td>
+<td headers="97.5%" class="gt_row gt_right">0.11</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">beta</td>
+<td headers="mean" class="gt_row gt_right">22.20</td>
+<td headers="sd" class="gt_row gt_right">1.77</td>
+<td headers="50%" class="gt_row gt_right">22.15</td>
+<td headers="2.5%" class="gt_row gt_right">18.82</td>
+<td headers="97.5%" class="gt_row gt_right">25.77</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_1</td>
+<td headers="mean" class="gt_row gt_right">0.09</td>
+<td headers="sd" class="gt_row gt_right">0.02</td>
+<td headers="50%" class="gt_row gt_right">0.09</td>
+<td headers="2.5%" class="gt_row gt_right">0.06</td>
+<td headers="97.5%" class="gt_row gt_right">0.14</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_2</td>
+<td headers="mean" class="gt_row gt_right">0.19</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.19</td>
+<td headers="2.5%" class="gt_row gt_right">0.14</td>
+<td headers="97.5%" class="gt_row gt_right">0.24</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_3</td>
+<td headers="mean" class="gt_row gt_right">0.34</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.34</td>
+<td headers="2.5%" class="gt_row gt_right">0.28</td>
+<td headers="97.5%" class="gt_row gt_right">0.40</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_4</td>
+<td headers="mean" class="gt_row gt_right">0.54</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.54</td>
+<td headers="2.5%" class="gt_row gt_right">0.48</td>
+<td headers="97.5%" class="gt_row gt_right">0.60</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_5</td>
+<td headers="mean" class="gt_row gt_right">0.76</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.76</td>
+<td headers="2.5%" class="gt_row gt_right">0.70</td>
+<td headers="97.5%" class="gt_row gt_right">0.81</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_6</td>
+<td headers="mean" class="gt_row gt_right">0.92</td>
+<td headers="sd" class="gt_row gt_right">0.02</td>
+<td headers="50%" class="gt_row gt_right">0.92</td>
+<td headers="2.5%" class="gt_row gt_right">0.87</td>
+<td headers="97.5%" class="gt_row gt_right">0.95</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_7</td>
+<td headers="mean" class="gt_row gt_right">0.98</td>
+<td headers="sd" class="gt_row gt_right">0.01</td>
+<td headers="50%" class="gt_row gt_right">0.99</td>
+<td headers="2.5%" class="gt_row gt_right">0.96</td>
+<td headers="97.5%" class="gt_row gt_right">1.00</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_8</td>
+<td headers="mean" class="gt_row gt_right">1.00</td>
+<td headers="sd" class="gt_row gt_right">0.00</td>
+<td headers="50%" class="gt_row gt_right">1.00</td>
+<td headers="2.5%" class="gt_row gt_right">0.99</td>
+<td headers="97.5%" class="gt_row gt_right">1.00</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">lp_</td>
+<td headers="mean" class="gt_row gt_right">−183.33</td>
+<td headers="sd" class="gt_row gt_right">0.97</td>
+<td headers="50%" class="gt_row gt_right">−183.03</td>
+<td headers="2.5%" class="gt_row gt_right">−185.93</td>
+<td headers="97.5%" class="gt_row gt_right">−182.37</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stderr">
+<pre><code>ci_level: 0.8 (80% intervals)</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>outer_level: 0.95 (95% intervals)</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/plot_mod1_p1-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li>Modelo Logit</li>
+</ul>
+<div class="cell" data-output.var="modelo_p1_logit">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode stan code-with-copy"><code class="sourceCode stan"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> {</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; k; <span class="co">// observaciones</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; n; <span class="co">// expuestos</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; y; <span class="co">// muertos</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">real</span> w; <span class="co">// dosis</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="kw">transformed data</span> {</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span> w_mean = mean(w); <span class="co">// promedio de w para centrar</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="kw">parameters</span> {</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span> alpha;</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span> beta;</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="kw">transformed parameters</span> {</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">real</span> p; <span class="co">// probability of success</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span>:k) {</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>    p[i] = inv_logit(alpha + beta * (w[i] - w_mean)); <span class="co">// logit </span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a><span class="kw">model</span> {</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>  alpha ~ normal(<span class="dv">0</span>, <span class="dv">1000</span>); <span class="co">// inicial de alfa</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>  beta ~ normal(<span class="dv">0</span>, <span class="dv">1000</span>); <span class="co">// inicial de beta</span></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span>:k) {</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>    y[i] ~ binomial(n[i], p[i]);</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Realiza el muestreo</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>model_fit2 <span class="ot">&lt;-</span> rstan<span class="sc">::</span><span class="fu">sampling</span>(modelo_p1_logit, </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                              <span class="at">data =</span> data_input,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">refresh=</span><span class="dv">0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="mxlimpptcl" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#mxlimpptcl table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#mxlimpptcl thead, #mxlimpptcl tbody, #mxlimpptcl tfoot, #mxlimpptcl tr, #mxlimpptcl td, #mxlimpptcl th {
+  border-style: none;
+}
+
+#mxlimpptcl p {
+  margin: 0;
+  padding: 0;
+}
+
+#mxlimpptcl .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#mxlimpptcl .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#mxlimpptcl .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#mxlimpptcl .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#mxlimpptcl .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#mxlimpptcl .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#mxlimpptcl .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#mxlimpptcl .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#mxlimpptcl .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#mxlimpptcl .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#mxlimpptcl .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#mxlimpptcl .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#mxlimpptcl .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#mxlimpptcl .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#mxlimpptcl .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mxlimpptcl .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#mxlimpptcl .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#mxlimpptcl .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#mxlimpptcl .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mxlimpptcl .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#mxlimpptcl .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mxlimpptcl .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#mxlimpptcl .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mxlimpptcl .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#mxlimpptcl .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mxlimpptcl .gt_left {
+  text-align: left;
+}
+
+#mxlimpptcl .gt_center {
+  text-align: center;
+}
+
+#mxlimpptcl .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#mxlimpptcl .gt_font_normal {
+  font-weight: normal;
+}
+
+#mxlimpptcl .gt_font_bold {
+  font-weight: bold;
+}
+
+#mxlimpptcl .gt_font_italic {
+  font-style: italic;
+}
+
+#mxlimpptcl .gt_super {
+  font-size: 65%;
+}
+
+#mxlimpptcl .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#mxlimpptcl .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#mxlimpptcl .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#mxlimpptcl .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#mxlimpptcl .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#mxlimpptcl .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#mxlimpptcl .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_heading">
+      <td colspan="6" class="gt_heading gt_title gt_font_normal gt_bottom_border" style="">Resumen de Modelo logit</td>
+    </tr>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="variable">variable</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean">mean</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="sd">sd</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="50%">50%</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="2.5%">2.5%</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="97.5%">97.5%</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="variable" class="gt_row gt_left">alpha</td>
+<td headers="mean" class="gt_row gt_right">0.76</td>
+<td headers="sd" class="gt_row gt_right">0.14</td>
+<td headers="50%" class="gt_row gt_right">0.75</td>
+<td headers="2.5%" class="gt_row gt_right">0.50</td>
+<td headers="97.5%" class="gt_row gt_right">1.04</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">beta</td>
+<td headers="mean" class="gt_row gt_right">34.70</td>
+<td headers="sd" class="gt_row gt_right">2.91</td>
+<td headers="50%" class="gt_row gt_right">34.64</td>
+<td headers="2.5%" class="gt_row gt_right">29.13</td>
+<td headers="97.5%" class="gt_row gt_right">40.56</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_1</td>
+<td headers="mean" class="gt_row gt_right">0.06</td>
+<td headers="sd" class="gt_row gt_right">0.02</td>
+<td headers="50%" class="gt_row gt_right">0.06</td>
+<td headers="2.5%" class="gt_row gt_right">0.03</td>
+<td headers="97.5%" class="gt_row gt_right">0.09</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_2</td>
+<td headers="mean" class="gt_row gt_right">0.16</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.16</td>
+<td headers="2.5%" class="gt_row gt_right">0.11</td>
+<td headers="97.5%" class="gt_row gt_right">0.22</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_3</td>
+<td headers="mean" class="gt_row gt_right">0.36</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.36</td>
+<td headers="2.5%" class="gt_row gt_right">0.30</td>
+<td headers="97.5%" class="gt_row gt_right">0.43</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_4</td>
+<td headers="mean" class="gt_row gt_right">0.61</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.61</td>
+<td headers="2.5%" class="gt_row gt_right">0.55</td>
+<td headers="97.5%" class="gt_row gt_right">0.67</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_5</td>
+<td headers="mean" class="gt_row gt_right">0.80</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.80</td>
+<td headers="2.5%" class="gt_row gt_right">0.75</td>
+<td headers="97.5%" class="gt_row gt_right">0.85</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_6</td>
+<td headers="mean" class="gt_row gt_right">0.90</td>
+<td headers="sd" class="gt_row gt_right">0.02</td>
+<td headers="50%" class="gt_row gt_right">0.91</td>
+<td headers="2.5%" class="gt_row gt_right">0.87</td>
+<td headers="97.5%" class="gt_row gt_right">0.94</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_7</td>
+<td headers="mean" class="gt_row gt_right">0.96</td>
+<td headers="sd" class="gt_row gt_right">0.01</td>
+<td headers="50%" class="gt_row gt_right">0.96</td>
+<td headers="2.5%" class="gt_row gt_right">0.93</td>
+<td headers="97.5%" class="gt_row gt_right">0.98</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_8</td>
+<td headers="mean" class="gt_row gt_right">0.98</td>
+<td headers="sd" class="gt_row gt_right">0.01</td>
+<td headers="50%" class="gt_row gt_right">0.98</td>
+<td headers="2.5%" class="gt_row gt_right">0.96</td>
+<td headers="97.5%" class="gt_row gt_right">0.99</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">lp_</td>
+<td headers="mean" class="gt_row gt_right">−187.22</td>
+<td headers="sd" class="gt_row gt_right">0.97</td>
+<td headers="50%" class="gt_row gt_right">−186.92</td>
+<td headers="2.5%" class="gt_row gt_right">−189.82</td>
+<td headers="97.5%" class="gt_row gt_right">−186.26</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stderr">
+<pre><code>ci_level: 0.8 (80% intervals)</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>outer_level: 0.95 (95% intervals)</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/plot_mod2_p1-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li>Modelo probit</li>
+</ul>
+<div class="cell" data-output.var="modelo_p1_probit">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode stan code-with-copy"><code class="sourceCode stan"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> {</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; k; <span class="co">// observaciones</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; n; <span class="co">// expuestos</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; y; <span class="co">// muertos</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">real</span> w; <span class="co">// dosis</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="kw">transformed data</span> {</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span> w_mean = mean(w); <span class="co">// promedio de w para centrar</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="kw">parameters</span> {</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span> alpha;</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span> beta;</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a><span class="kw">transformed parameters</span> {</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">array</span>[k] <span class="dt">real</span> p; <span class="co">// probability of success</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span>:k) {</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>    p[i] = Phi_approx(alpha + beta * (w[i] - w_mean)); <span class="co">// probit</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a><span class="kw">model</span> {</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>  alpha ~ normal(<span class="dv">0</span>, <span class="dv">1000</span>); <span class="co">// inicial de alfa</span></span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>  beta ~ normal(<span class="dv">0</span>, <span class="dv">1000</span>); <span class="co">// inicial de beta</span></span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span>:k) {</span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>    y[i] ~ binomial(n[i], p[i]);</span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Realiza el muestreo</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>model_fit3 <span class="ot">&lt;-</span> rstan<span class="sc">::</span><span class="fu">sampling</span>(modelo_p1_probit, </span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>                              <span class="at">data =</span> data_input,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>                              <span class="at">refresh=</span><span class="dv">0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="qymgaudwmc" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#qymgaudwmc table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#qymgaudwmc thead, #qymgaudwmc tbody, #qymgaudwmc tfoot, #qymgaudwmc tr, #qymgaudwmc td, #qymgaudwmc th {
+  border-style: none;
+}
+
+#qymgaudwmc p {
+  margin: 0;
+  padding: 0;
+}
+
+#qymgaudwmc .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#qymgaudwmc .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#qymgaudwmc .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#qymgaudwmc .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#qymgaudwmc .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#qymgaudwmc .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#qymgaudwmc .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#qymgaudwmc .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#qymgaudwmc .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#qymgaudwmc .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#qymgaudwmc .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#qymgaudwmc .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#qymgaudwmc .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#qymgaudwmc .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#qymgaudwmc .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qymgaudwmc .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#qymgaudwmc .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#qymgaudwmc .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#qymgaudwmc .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qymgaudwmc .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#qymgaudwmc .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qymgaudwmc .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#qymgaudwmc .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qymgaudwmc .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#qymgaudwmc .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qymgaudwmc .gt_left {
+  text-align: left;
+}
+
+#qymgaudwmc .gt_center {
+  text-align: center;
+}
+
+#qymgaudwmc .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#qymgaudwmc .gt_font_normal {
+  font-weight: normal;
+}
+
+#qymgaudwmc .gt_font_bold {
+  font-weight: bold;
+}
+
+#qymgaudwmc .gt_font_italic {
+  font-style: italic;
+}
+
+#qymgaudwmc .gt_super {
+  font-size: 65%;
+}
+
+#qymgaudwmc .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#qymgaudwmc .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#qymgaudwmc .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#qymgaudwmc .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#qymgaudwmc .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#qymgaudwmc .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#qymgaudwmc .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_heading">
+      <td colspan="6" class="gt_heading gt_title gt_font_normal gt_bottom_border" style="">Resumen de Modelo probit</td>
+    </tr>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="variable">variable</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean">mean</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="sd">sd</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="50%">50%</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="2.5%">2.5%</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="97.5%">97.5%</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="variable" class="gt_row gt_left">alpha</td>
+<td headers="mean" class="gt_row gt_right">0.45</td>
+<td headers="sd" class="gt_row gt_right">0.08</td>
+<td headers="50%" class="gt_row gt_right">0.45</td>
+<td headers="2.5%" class="gt_row gt_right">0.30</td>
+<td headers="97.5%" class="gt_row gt_right">0.60</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">beta</td>
+<td headers="mean" class="gt_row gt_right">19.84</td>
+<td headers="sd" class="gt_row gt_right">1.46</td>
+<td headers="50%" class="gt_row gt_right">19.84</td>
+<td headers="2.5%" class="gt_row gt_right">17.01</td>
+<td headers="97.5%" class="gt_row gt_right">22.69</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_1</td>
+<td headers="mean" class="gt_row gt_right">0.06</td>
+<td headers="sd" class="gt_row gt_right">0.02</td>
+<td headers="50%" class="gt_row gt_right">0.06</td>
+<td headers="2.5%" class="gt_row gt_right">0.03</td>
+<td headers="97.5%" class="gt_row gt_right">0.10</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_2</td>
+<td headers="mean" class="gt_row gt_right">0.18</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.18</td>
+<td headers="2.5%" class="gt_row gt_right">0.13</td>
+<td headers="97.5%" class="gt_row gt_right">0.24</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_3</td>
+<td headers="mean" class="gt_row gt_right">0.38</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.38</td>
+<td headers="2.5%" class="gt_row gt_right">0.32</td>
+<td headers="97.5%" class="gt_row gt_right">0.44</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_4</td>
+<td headers="mean" class="gt_row gt_right">0.60</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.60</td>
+<td headers="2.5%" class="gt_row gt_right">0.55</td>
+<td headers="97.5%" class="gt_row gt_right">0.66</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_5</td>
+<td headers="mean" class="gt_row gt_right">0.79</td>
+<td headers="sd" class="gt_row gt_right">0.03</td>
+<td headers="50%" class="gt_row gt_right">0.79</td>
+<td headers="2.5%" class="gt_row gt_right">0.74</td>
+<td headers="97.5%" class="gt_row gt_right">0.84</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_6</td>
+<td headers="mean" class="gt_row gt_right">0.90</td>
+<td headers="sd" class="gt_row gt_right">0.02</td>
+<td headers="50%" class="gt_row gt_right">0.90</td>
+<td headers="2.5%" class="gt_row gt_right">0.86</td>
+<td headers="97.5%" class="gt_row gt_right">0.94</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_7</td>
+<td headers="mean" class="gt_row gt_right">0.96</td>
+<td headers="sd" class="gt_row gt_right">0.01</td>
+<td headers="50%" class="gt_row gt_right">0.96</td>
+<td headers="2.5%" class="gt_row gt_right">0.93</td>
+<td headers="97.5%" class="gt_row gt_right">0.98</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">p_8</td>
+<td headers="mean" class="gt_row gt_right">0.99</td>
+<td headers="sd" class="gt_row gt_right">0.01</td>
+<td headers="50%" class="gt_row gt_right">0.99</td>
+<td headers="2.5%" class="gt_row gt_right">0.97</td>
+<td headers="97.5%" class="gt_row gt_right">1.00</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">lp_</td>
+<td headers="mean" class="gt_row gt_right">−186.67</td>
+<td headers="sd" class="gt_row gt_right">0.96</td>
+<td headers="50%" class="gt_row gt_right">−186.40</td>
+<td headers="2.5%" class="gt_row gt_right">−189.28</td>
+<td headers="97.5%" class="gt_row gt_right">−185.69</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stderr">
+<pre><code>ci_level: 0.8 (80% intervals)</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>outer_level: 0.95 (95% intervals)</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ol start="2" type="1">
+<li>Consideren las siguientes dos distribuciones condicionales completas, analizadas en el artículo de Casella y George (1992) que les incluí como lectura: <span class="math display">\[f(x|y)\propto ye^{-yx} \quad 0&lt;x&lt;B&lt;\infty\]</span> <span class="math display">\[f(y|x)\propto xe^{-xy} \quad 0&lt;y&lt;B&lt;\infty\]</span></li>
+</ol>
+<ul>
+<li>Obtener un estimado de la distribución marginal de <span class="math inline">\(X\)</span> cuando <span class="math inline">\(B = 10\)</span> usando el Gibbs sampler.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>X <span class="ot">=</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="dv">5000</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>Y <span class="ot">=</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="dv">5000</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>k <span class="ot">=</span> <span class="dv">30</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5000</span>) {</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">=</span> <span class="fu">rep</span>(<span class="dv">1</span>, k)</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>  y <span class="ot">=</span> <span class="fu">rep</span>(<span class="dv">1</span>, k)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>k) {</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>    temp_x <span class="ot">=</span> <span class="dv">11</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span>(temp_x <span class="sc">&gt;</span> <span class="dv">10</span>) {</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>      x[j] <span class="ot">=</span> <span class="fu">rexp</span>(<span class="dv">1</span>, y[j<span class="dv">-1</span>])</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>      temp_x <span class="ot">=</span> x[j] }</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>    temp_y <span class="ot">=</span> <span class="dv">11</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span>(temp_y <span class="sc">&gt;</span> <span class="dv">10</span>) {</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>      y[j] <span class="ot">=</span> <span class="fu">rexp</span>(<span class="dv">1</span>, x[j])</span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>      temp_y <span class="ot">=</span> y[j] }     }</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>  X[i] <span class="ot">=</span> x[k]</span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>  Y[i] <span class="ot">=</span> y[k] }</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: The dot-dot notation (`..density..`) was deprecated in ggplot2 3.4.0.
+ℹ Please use `after_stat(density)` instead.</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li>Ahora supongan que <span class="math inline">\(B =\infty\)</span> así que las distribuciones condicionales completas son ahora las ordinarias distribuciones exponenciales no truncadas. Mostrar analíticamente que <span class="math inline">\(f_x(t) = 1/t\)</span> es una solución a la ecuación integral en este caso: <span class="math display">\[f_x(x)=\int \left[\int f_{x|y}(x|y)f_{y|t}(y|t)dy\right]f_x(t)dt\]</span> ¿El Gibbs sampler convergerá a esta solución?</li>
+</ul>
+<p>Usando la función dada: <span class="math display">\[f_x(x)=\int \left[\int f_{x|y}(x|y)f_{y|t}(y|t)dy\right]f_x(t)dt\]</span> <span class="math display">\[=\int \left[\int ye^{-yx}te^{-ty}dy \right]f_x(t)dt\]</span> <span class="math display">\[=\int t\left[\int ye^{-yx}e^{-ty}dy \right]f_x(t)dt\]</span> Substituyendo <span class="math inline">\(f_x(t)=\frac{1}{t}\)</span> tenemos: <span class="math display">\[=\int\left[\frac{t}{(x+t)^2} \right]\frac{1}{t}dt\]</span> <span class="math display">\[=\frac{1}{x}\]</span> Aunque esta es una solución, 1/x no es una función de densidad. Cuando se aplica el muestreador de Gibbs a las densidades condicionales, la convergencia se rompe. No da una aproximación a 1/x, de hecho, no obtenemos una muestra de variables aleatorias de una distribución marginal.</p>
+<ol start="3" type="1">
+<li>Supongan que una variable aleatoria <span class="math inline">\(y\)</span> se distribuye de acuerdo a la densidad poli-Cauchy: <span class="math display">\[g(y)=\prod_{i=1}^{n} \frac{1}{\pi(a+(y-a_1)^2)}\]</span> donde <span class="math inline">\(a=(a_1,...,a_n)\)</span> es un vector de parámetros. Supongan que <span class="math inline">\(n=6\)</span> y <span class="math inline">\(a=(1,2,3,6,7,8)\)</span>.</li>
+</ol>
+<ul>
+<li>Escriban una función que calcule la log-densidad de <span class="math inline">\(y\)</span>.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>log_poli_cauchy_d <span class="ot">&lt;-</span> <span class="cf">function</span>(y, a) {</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  logg_y <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (k <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(a)) {</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    arg_log <span class="ot">&lt;-</span> pi <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">+</span> (y <span class="sc">-</span> a[k])<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    logg_y <span class="ot">&lt;-</span> logg_y <span class="sc">-</span> <span class="fu">log</span>(arg_log)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(logg_y)</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<ul>
+<li>Escriban una función que tome una muestra de tamaño 10,000 de la densidad de <span class="math inline">\(y\)</span>, usando Metropolis-Hastings con función propuesta una caminata aleatoria con desviación estandar <span class="math inline">\(C\)</span>. Investiguen el efecto de la elección de <span class="math inline">\(C\)</span> en la tasa de aceptación, y la mezcla de la cadena en la densidad.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>mh_poli_cauchy <span class="ot">&lt;-</span> <span class="cf">function</span>(num_samples, initial_state, proposal_std_dev, density_function, parameters) {</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  samples <span class="ot">&lt;-</span> <span class="fu">numeric</span>(num_samples)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  current_state <span class="ot">&lt;-</span> initial_state</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  accep_ind <span class="ot">&lt;-</span> <span class="fu">logical</span>(num_samples)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>num_samples) {</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    proposed_state <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">1</span>, <span class="at">mean =</span> current_state, <span class="at">sd =</span> proposal_std_dev)</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    log_alpha <span class="ot">&lt;-</span> <span class="fu">density_function</span>(proposed_state, parameters) <span class="sc">-</span> <span class="fu">density_function</span>(current_state, parameters)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>    accep_crit <span class="ot">&lt;-</span> <span class="fu">log</span>(<span class="fu">runif</span>(<span class="dv">1</span>)) <span class="sc">&lt;</span> log_alpha</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    current_state <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(accep_crit, proposed_state, current_state)</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    accep_ind[i] <span class="ot">&lt;-</span> accep_crit</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>    samples[i] <span class="ot">&lt;-</span> current_state</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>  accep_rate <span class="ot">&lt;-</span> <span class="fu">sum</span>(accep_ind) <span class="sc">/</span> num_samples</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">list</span>(<span class="at">samples =</span> samples, <span class="at">accep_rate =</span> accep_rate, <span class="at">accep_ind =</span> accep_ind))</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Parámetros para Metropolis-Hastings</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>num_samples <span class="ot">&lt;-</span> <span class="dv">10000</span></span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>initial_state <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>proposal_std_devs <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.1</span>, <span class="fl">0.5</span>, <span class="fl">1.0</span>, <span class="fl">2.0</span>)</span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>parameters <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">2</span>, <span class="dv">6</span>, <span class="dv">7</span>, <span class="dv">8</span>)</span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>results3 <span class="ot">&lt;-</span> <span class="fu">lapply</span>(proposal_std_devs, <span class="cf">function</span>(proposal_std_dev) {</span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a>  result <span class="ot">&lt;-</span> <span class="fu">mh_poli_cauchy</span>(num_samples, initial_state, proposal_std_dev, log_poli_cauchy_d, parameters)</span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a>  accep_rate <span class="ot">&lt;-</span> result<span class="sc">$</span>accep_rate</span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a>  samples <span class="ot">&lt;-</span> result<span class="sc">$</span>samples</span>
+<span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">list</span>(<span class="at">proposal_std_dev =</span> proposal_std_dev, <span class="at">accep_rate =</span> accep_rate, <span class="at">samples =</span> samples))</span>
+<span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Desviación estándar propuesta: 0.1 
+Tasa de aceptación: 0.953 
+
+Desviación estándar propuesta: 0.5 
+Tasa de aceptación: 0.8144 
+
+Desviación estándar propuesta: 1 
+Tasa de aceptación: 0.6769 
+
+Desviación estándar propuesta: 2 
+Tasa de aceptación: 0.5352 </code></pre>
+</div>
+</div>
+<ul>
+<li>Usando la muestra simulada de una “buena” elección de <span class="math inline">\(C\)</span>, aproximar la probabilidad <span class="math inline">\(P(6 &lt; Y &lt; 8)\)</span>.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>select_result <span class="ot">&lt;-</span> results3[[<span class="dv">1</span>]]</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>samples_interval <span class="ot">&lt;-</span> select_result<span class="sc">$</span>samples[select_result<span class="sc">$</span>samples <span class="sc">&gt;</span> <span class="dv">6</span> <span class="sc">&amp;</span> select_result<span class="sc">$</span>samples <span class="sc">&lt;</span> <span class="dv">8</span>]</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>prob_est <span class="ot">&lt;-</span> <span class="fu">length</span>(samples_interval) <span class="sc">/</span> <span class="fu">length</span>(select_result<span class="sc">$</span>samples)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Aproximación de la probabilidad P(6 &lt; Y &lt; 8): 0.0259 </code></pre>
+</div>
+</div>
+<ol start="4" type="1">
+<li>Supongan que el vector <span class="math inline">\((X,Y)\)</span> tiene función de distribución conjunta: <span class="math display">\[f(x,y)=\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}, \quad x&gt;0, \quad y=0,1,2,...\]</span> y deseamos simular de la densidad conjunta.</li>
+</ol>
+<ul>
+<li>Mostrar que la densidad condicional <span class="math inline">\(f(x|y)\)</span> es una Gamma e identificar los parámetros.</li>
+</ul>
+<blockquote class="blockquote">
+<p>Para encontrar la densidad condicional <span class="math inline">\(f(x|y)\)</span>, primero necesitamos encontrar la densidad marginal de <span class="math inline">\(Y\)</span>,<span class="math inline">\(f_Y(y)\)</span> ya que la densidad condicional se define como: <span class="math display">\[f(x|y)=\frac{f(x,y)}{f_Y(y)}\]</span> Dada la función de distribución conjunta, podemos encontrar la densidad marginal de <span class="math inline">\(Y\)</span> integrando sobre todos los posibles varores de <span class="math inline">\(x\)</span>: <span class="math display">\[
+f_Y(y)=\int_{0}^{\infty}f(x,y)dx
+\]</span> <span class="math display">\[
+=\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}dx
+\]</span> Sacando los terminos que no dependen de <span class="math inline">\(x\)</span> de la integral, tenemos: <span class="math display">\[
+=\frac{b^a}{y!\Gamma(a)}\int_{0}^{\infty}x^{a+y-1}e^{-(1+b)x}dx
+\]</span> Recordemos que la función Gamma se define como: <span class="math display">\[f_X(x)=\frac{\lambda}{\Gamma(\alpha)}(\lambda x)^{\alpha-1}e^{-\lambda}\]</span> donde <span class="math display">\[\Gamma (\alpha )=\int _{0}^{\infty }t^{\alpha -1}e^{-t}dt\]</span> Y la de densidad acumulada es: <span class="math display">\[
+F_{X}(x)=\int _{0}^{x}{\frac {\lambda }{\Gamma (\alpha )}}(\lambda y)^{\alpha -1}e^{-\lambda y}\;dy
+\]</span> La integral que tenemos esta incompleta por lo que agregaremos un 1 para completar una Gamma con parámetros <span class="math inline">\((a+y)\)</span> y <span class="math inline">\((1+b)\)</span>: <span class="math display">\[
+=\frac{b^a}{y!\Gamma(a)}\Gamma(a+y)\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}dx
+\]</span> <span class="math display">\[
+f_Y(y)=\frac{b^a\Gamma(a+y)}{y!\Gamma(a)}
+\]</span> Ahora podemos encontrar la densidad condicional <span class="math inline">\(f(x|y)\)</span>: <span class="math display">\[f(x|y)=\frac{f(x,y)}{f_Y(y)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{b^a\Gamma(a+y)}{y!\Gamma(a)}}\]</span> Simplificamos y obtenemos: <span class="math display">\[f(x|y)=\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}\]</span> Identificamos que la distribución condicional <span class="math inline">\(f(x|y)\)</span> es una distribución Gamma con parámetros <span class="math inline">\(\alpha=(a+y)\)</span> y <span class="math inline">\(\beta=(1+b)\)</span></p>
+</blockquote>
+<ul>
+<li>Mostrar que la densidad condicional <span class="math inline">\(f(y|x)\)</span> es Poisson.</li>
+</ul>
+<blockquote class="blockquote">
+<p>Para encontrar la densidad condicional <span class="math inline">\(f(y|x)\)</span>, primero necesitamos encontrar la densidad marginal de <span class="math inline">\(X\)</span>,<span class="math inline">\(f_X(x)\)</span> ya que la densidad condicional se define como: <span class="math display">\[f(y|x)=\frac{f(x,y)}{f_X(x)}\]</span> Dada la función de distribución conjunta, podemos encontrar la densidad marginal de <span class="math inline">\(X\)</span> sumando para todos los posibles varores de <span class="math inline">\(y\)</span>: <span class="math display">\[ f_X(x)=\sum_{y=0}^{\infty}f(x,y) \]</span> <span class="math display">\[ =\sum_{y=0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}\]</span> Se sacan de la sumatoria los terminos que no depende de <span class="math inline">\(y\)</span>, quedando: <span class="math display">\[
+=\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}\frac{e^{-x}x^{a+y-1}}{y!}
+\]</span> <span class="math display">\[
+=\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}e^{-x}\left(\frac{x^{a+y-1}}{y!}\right)
+\]</span> <span class="math display">\[
+=\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}\sum_{y=0}^{\infty} x^{a-1} \frac{x^y}{y!}
+\]</span> <span class="math display">\[
+=\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}e^{x}x^{a-1}
+\]</span> <span class="math display">\[
+f_X(x)=\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1}
+\]</span> Entonces la densidad condicional de <span class="math inline">\(f(y|x)\)</span> es: <span class="math display">\[f(y|x)=\frac{f(x,y)}{f_X(x)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1}}\]</span> <span class="math display">\[
+f(y|x)=\frac{e^{-x}x^y}{y!} \quad \sim Possion(x)
+\]</span></p>
+</blockquote>
+<ul>
+<li>Escriban una función para implementar el Gibbs sampler cuando las constantes son dadas con valores <span class="math inline">\(a=1\)</span> y <span class="math inline">\(b=1\)</span>.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>fx_y <span class="ot">&lt;-</span> <span class="cf">function</span>(x, y, a, b){ <span class="fu">return</span>(<span class="fu">dgamma</span>(x, <span class="at">shape =</span> (a <span class="sc">+</span> y), <span class="at">rate =</span> (<span class="dv">1</span> <span class="sc">+</span> b))) }</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>fy_x <span class="ot">&lt;-</span> <span class="cf">function</span>(y, x){ <span class="fu">return</span>(<span class="fu">dpois</span>(y, <span class="at">lambda =</span> x)) }</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>gibbs <span class="ot">&lt;-</span> <span class="cf">function</span>(n, a, b){</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">=</span> <span class="fu">rep</span>(<span class="dv">0</span>, n)</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>  y <span class="ot">=</span> <span class="fu">rep</span>(<span class="dv">0</span>, n)</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>  x[<span class="dv">1</span>] <span class="ot">=</span> <span class="dv">1</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>  y[<span class="dv">1</span>] <span class="ot">=</span> <span class="dv">1</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>n){</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>    x[i] <span class="ot">=</span> <span class="fu">rgamma</span>(<span class="dv">1</span>, <span class="at">shape =</span> (a <span class="sc">+</span> y[i<span class="dv">-1</span>]), <span class="at">rate =</span> (<span class="dv">1</span> <span class="sc">+</span> b))</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>    y[i] <span class="ot">=</span> <span class="fu">rpois</span>(<span class="dv">1</span>, <span class="at">lambda =</span> x[i])</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">data.frame</span>(x, y))</span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<ul>
+<li>Con su función, escriban 1,000 ciclos del Gibbs sampler y de la salida, hacer los histogramas y estimar <span class="math inline">\(E(Y)\)</span>.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>res4 <span class="ot">&lt;-</span> <span class="fu">gibbs</span>(<span class="dv">1000</span>, <span class="dv">1</span>, <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="sjmzvnekpt" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#sjmzvnekpt table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#sjmzvnekpt thead, #sjmzvnekpt tbody, #sjmzvnekpt tfoot, #sjmzvnekpt tr, #sjmzvnekpt td, #sjmzvnekpt th {
+  border-style: none;
+}
+
+#sjmzvnekpt p {
+  margin: 0;
+  padding: 0;
+}
+
+#sjmzvnekpt .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#sjmzvnekpt .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#sjmzvnekpt .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#sjmzvnekpt .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#sjmzvnekpt .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#sjmzvnekpt .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#sjmzvnekpt .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#sjmzvnekpt .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#sjmzvnekpt .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#sjmzvnekpt .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#sjmzvnekpt .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#sjmzvnekpt .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#sjmzvnekpt .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#sjmzvnekpt .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#sjmzvnekpt .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#sjmzvnekpt .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#sjmzvnekpt .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#sjmzvnekpt .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#sjmzvnekpt .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#sjmzvnekpt .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#sjmzvnekpt .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#sjmzvnekpt .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#sjmzvnekpt .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#sjmzvnekpt .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#sjmzvnekpt .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#sjmzvnekpt .gt_left {
+  text-align: left;
+}
+
+#sjmzvnekpt .gt_center {
+  text-align: center;
+}
+
+#sjmzvnekpt .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#sjmzvnekpt .gt_font_normal {
+  font-weight: normal;
+}
+
+#sjmzvnekpt .gt_font_bold {
+  font-weight: bold;
+}
+
+#sjmzvnekpt .gt_font_italic {
+  font-style: italic;
+}
+
+#sjmzvnekpt .gt_super {
+  font-size: 65%;
+}
+
+#sjmzvnekpt .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#sjmzvnekpt .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#sjmzvnekpt .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#sjmzvnekpt .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#sjmzvnekpt .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#sjmzvnekpt .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#sjmzvnekpt .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="E_Y">E_Y</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="E_Y" class="gt_row gt_right">0.954</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<ol start="5" type="1">
+<li>Supongan que se tiene una matriz de <span class="math inline">\(4×4\)</span> de variables aleatorias Bernoulli, y la denotamos por <span class="math inline">\([X_{ij}]\)</span>, y sea <span class="math inline">\(N(X)\)</span> el número total de éxitos en <span class="math inline">\(X\)</span> (la suma de <span class="math inline">\(X\)</span>) y <span class="math inline">\(D(X)\)</span> es el total de vecinos de dichos éxitos (horizontales o verticales) que difieren. Por ejemplo,</li>
+</ol>
+<p><span class="math display">\[
+\begin{array}{ccc}    X &amp; N(X) &amp; D(X) \\    \left( \begin{array}{cccc}    1 &amp; 0 &amp; 0 &amp; 0 \\    0 &amp; 0 &amp; 0 &amp; 0 \\    0 &amp; 0 &amp; 0 &amp; 0 \\    \end{array} \right) &amp; 1 &amp; 2 \\    \\    \left( \begin{array}{ccc}    1 &amp; 1 &amp; 0 \\    0 &amp; 1 &amp; 0 \\    0 &amp; 0 &amp; 0 \\    \end{array} \right) &amp; 3 &amp; 5 \\\end{array}
+\]</span></p>
+<p>Noten que si se escriben los elementos de <span class="math inline">\(X\)</span> en un vector <span class="math inline">\(V\)</span> , entonces existe una matriz <span class="math inline">\(M\)</span> de 24 × 16 tal que <span class="math inline">\(D(X)\)</span> es la suma de los valores absolutos de <span class="math inline">\(MV\)</span>. El 24 surge porque hay 24 pares de vecinos a revisar. Supongan que <span class="math inline">\(\pi(X)\)</span>, la distribución de <span class="math inline">\(X\)</span>, es proporcional a <span class="math display">\[\pi(X)\propto p^{N(X)}(1-p)^{16-N(X)}exp(-\lambda D(X))\]</span> Si <span class="math inline">\(\lambda=0\)</span>, las variables son iid Bernoulli<span class="math inline">\((p)\)</span>. Usar el método de Metropolis-Hastings usando los siguientes kerneles de transición. Hay <span class="math inline">\(2^{16}\)</span> posibles estados, uno por cada posible valor de <span class="math inline">\(X\)</span>. a) Sea <span class="math inline">\(q_1\)</span> tal que cada transición es igualmente plausible con probabilidad <span class="math inline">\(1/2^{16}\)</span>. Esto es, el siguiente estado candidato para <span class="math inline">\(X\)</span> es simplemente un vector de 16 iid Bernoulli<span class="math inline">\((p)\)</span>. b) Sea <span class="math inline">\(q_2\)</span> tal que se elige una de las 16 entradas en <span class="math inline">\(X\)</span> con probabilidad 1/16, y luego se determina el valor de la celda a ser 0 o 1 con probabilidad 0.5 en cada caso. Entonces sólo un elemento de <span class="math inline">\(X\)</span> puede cambiar en cada transición a lo más.</p>
+<p>Ambas <span class="math inline">\(q\)</span>’s son simétricas, irreducibles y tienen diagonales positivas. La primera se mueve más rápido que la segunda. Estamos interesados en la probabilidad de que todos los elementos de la diagonal sean 1. Usen las dos <span class="math inline">\(q\)</span>’s para estimar la probabilidad de 1’s en la diagonal para <span class="math inline">\(\lambda=0, 1,3\)</span> y <span class="math inline">\(p=0.5,0.8\)</span>. Esto se puede hacer calculando la fracción acumulada de veces que la cadena tiene 1’s sobre la diagonal conforme se muestrea de la cadena. Comparar los resultados de las 2 cadenas. Tienen el mismo valor asintótico, pero ¿una cadena llega más rápido que la otra? ¿Alguna cadena muestra más autocorrelación que la otra (por ejemplo, estimados de la probabilidad en 100 pasos sucesivos muestran más correlación para una cadena que para la otra?). En este problema, también determinen cuántas simulaciones hay que hacer, para desechar el periodo de calentamiento.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># funciones</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>pi <span class="ot">&lt;-</span> <span class="cf">function</span>(X, p, lambda) {</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  N_X <span class="ot">&lt;-</span> <span class="fu">sum</span>(X)</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  D_X <span class="ot">&lt;-</span> <span class="fu">D</span>(X)</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>((p<span class="sc">^</span>N_X) <span class="sc">*</span> ((<span class="dv">1</span> <span class="sc">-</span> p)<span class="sc">^</span>(<span class="dv">16</span> <span class="sc">-</span> N_X)) <span class="sc">*</span> <span class="fu">exp</span>(<span class="sc">-</span>lambda <span class="sc">*</span> D_X))</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>D <span class="ot">&lt;-</span> <span class="cf">function</span>(X) {</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>  differences <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>) {</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>) {</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (j <span class="sc">&lt;</span> <span class="dv">4</span>) {</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>        differences <span class="ot">&lt;-</span> differences <span class="sc">+</span> <span class="fu">as.numeric</span>(X[i, j] <span class="sc">!=</span> X[i, j<span class="sc">+</span><span class="dv">1</span>])</span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (i <span class="sc">&lt;</span> <span class="dv">4</span>) {</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>        differences <span class="ot">&lt;-</span> differences <span class="sc">+</span> <span class="fu">as.numeric</span>(X[i, j] <span class="sc">!=</span> X[i<span class="sc">+</span><span class="dv">1</span>, j])</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(differences)</span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true" tabindex="-1"></a>q1_generate <span class="ot">&lt;-</span> <span class="cf">function</span>(p) {</span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">matrix</span>(<span class="fu">rbinom</span>(<span class="dv">16</span>, <span class="dv">1</span>, p), <span class="at">nrow =</span> <span class="dv">4</span>, <span class="at">ncol =</span> <span class="dv">4</span>))</span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true" tabindex="-1"></a>q2_generate <span class="ot">&lt;-</span> <span class="cf">function</span>(X) {</span>
+<span id="cb24-28"><a href="#cb24-28" aria-hidden="true" tabindex="-1"></a>  X_prime <span class="ot">&lt;-</span> X</span>
+<span id="cb24-29"><a href="#cb24-29" aria-hidden="true" tabindex="-1"></a>  i <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>, <span class="dv">1</span>)</span>
+<span id="cb24-30"><a href="#cb24-30" aria-hidden="true" tabindex="-1"></a>  j <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>, <span class="dv">1</span>)</span>
+<span id="cb24-31"><a href="#cb24-31" aria-hidden="true" tabindex="-1"></a>  X_prime[i, j] <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> X_prime[i, j]</span>
+<span id="cb24-32"><a href="#cb24-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(X_prime)</span>
+<span id="cb24-33"><a href="#cb24-33" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb24-34"><a href="#cb24-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-35"><a href="#cb24-35" aria-hidden="true" tabindex="-1"></a>metropolis_hastings_step <span class="ot">&lt;-</span> <span class="cf">function</span>(X, p, lambda, kernel) {</span>
+<span id="cb24-36"><a href="#cb24-36" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (kernel <span class="sc">==</span> <span class="st">'q1'</span>) {</span>
+<span id="cb24-37"><a href="#cb24-37" aria-hidden="true" tabindex="-1"></a>    X_prime <span class="ot">&lt;-</span> <span class="fu">q1_generate</span>(p)</span>
+<span id="cb24-38"><a href="#cb24-38" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (kernel <span class="sc">==</span> <span class="st">'q2'</span>) {</span>
+<span id="cb24-39"><a href="#cb24-39" aria-hidden="true" tabindex="-1"></a>    X_prime <span class="ot">&lt;-</span> <span class="fu">q2_generate</span>(X)</span>
+<span id="cb24-40"><a href="#cb24-40" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb24-41"><a href="#cb24-41" aria-hidden="true" tabindex="-1"></a>  acceptance_prob <span class="ot">&lt;-</span> <span class="fu">min</span>(<span class="dv">1</span>, <span class="fu">pi</span>(X_prime, p, lambda) <span class="sc">/</span> <span class="fu">pi</span>(X, p, lambda))</span>
+<span id="cb24-42"><a href="#cb24-42" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">runif</span>(<span class="dv">1</span>) <span class="sc">&lt;</span> acceptance_prob) {</span>
+<span id="cb24-43"><a href="#cb24-43" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(X_prime)</span>
+<span id="cb24-44"><a href="#cb24-44" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb24-45"><a href="#cb24-45" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(X)</span>
+<span id="cb24-46"><a href="#cb24-46" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb24-47"><a href="#cb24-47" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb24-48"><a href="#cb24-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-49"><a href="#cb24-49" aria-hidden="true" tabindex="-1"></a>simulate_metropolis_hastings <span class="ot">&lt;-</span> <span class="cf">function</span>(p, lambda, kernel, <span class="at">n_steps =</span> <span class="dv">10000</span>) {</span>
+<span id="cb24-50"><a href="#cb24-50" aria-hidden="true" tabindex="-1"></a>  X <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">rbinom</span>(<span class="dv">16</span>, <span class="dv">1</span>, p), <span class="at">nrow =</span> <span class="dv">4</span>, <span class="at">ncol =</span> <span class="dv">4</span>)</span>
+<span id="cb24-51"><a href="#cb24-51" aria-hidden="true" tabindex="-1"></a>  diagonal_ones_history <span class="ot">&lt;-</span> <span class="fu">numeric</span>(n_steps)</span>
+<span id="cb24-52"><a href="#cb24-52" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (step <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>n_steps) {</span>
+<span id="cb24-53"><a href="#cb24-53" aria-hidden="true" tabindex="-1"></a>    X <span class="ot">&lt;-</span> <span class="fu">metropolis_hastings_step</span>(X, p, lambda, kernel)</span>
+<span id="cb24-54"><a href="#cb24-54" aria-hidden="true" tabindex="-1"></a>    diagonal_ones_history[step] <span class="ot">&lt;-</span> <span class="fu">all</span>(<span class="fu">diag</span>(X) <span class="sc">==</span> <span class="dv">1</span>)</span>
+<span id="cb24-55"><a href="#cb24-55" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb24-56"><a href="#cb24-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">cumsum</span>(diagonal_ones_history) <span class="sc">/</span> (<span class="dv">1</span><span class="sc">:</span>n_steps))</span>
+<span id="cb24-57"><a href="#cb24-57" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Parámetros</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fl">0.5</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>lambda <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>n_steps <span class="ot">&lt;-</span> <span class="dv">10000</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Simulaciones para ambos kerneles</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>probability_history_q1 <span class="ot">&lt;-</span> <span class="fu">simulate_metropolis_hastings</span>(p, </span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>                                                       lambda, </span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>                                                       <span class="st">'q1'</span>, </span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>                                                       n_steps)</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>probability_history_q2 <span class="ot">&lt;-</span> <span class="fu">simulate_metropolis_hastings</span>(p, </span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>                                                       lambda, </span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a>                                                       <span class="st">'q2'</span>,</span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>                                                       n_steps)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ol start="6" type="1">
+<li>Considera los siguientes números: <span class="math display">\[0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2\]</span> Usen la distribución exponencial <span class="math inline">\(Y_i\sim exp(\theta)\)</span> para modelar estos datos y asignen una inicial sobre <span class="math inline">\(log(\theta)\)</span></li>
+</ol>
+<!-- -->
+<ol type="a">
+<li>Definan los datos enWinBUGS (u OpenBUGS). Usen <span class="math inline">\(\theta=1\)</span> como valor inicial.</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Datos observados</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>datos_obs <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.4</span>, <span class="fl">0.01</span>, <span class="fl">0.2</span>, <span class="fl">0.1</span>, <span class="fl">2.1</span>, <span class="fl">0.1</span>, <span class="fl">0.9</span>, <span class="fl">2.4</span>, <span class="fl">0.1</span>, <span class="fl">0.2</span>)</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Valor inicial para theta</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>theta_inicial <span class="ot">&lt;-</span> <span class="dv">1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<ol start="2" type="a">
+<li>Escriban el código para el modelo.</li>
+</ol>
+<div class="cell" data-output.var="modelo_p6_exp">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode stan code-with-copy"><code class="sourceCode stan"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Modelo exponencial</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> {</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; N;       </span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">vector</span>[N] y;           </span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; theta0;  </span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a><span class="kw">parameters</span> {</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">real</span>&lt;<span class="kw">lower</span>=<span class="dv">0</span>&gt; theta;</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a><span class="kw">model</span> {</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>  theta ~ exponential(<span class="dv">1</span> / theta0);  </span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>  y ~ exponential(theta);           </span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<ol start="3" type="a">
+<li>Compilen el modelo y obtengan una muestra de 1000 iteraciones después de descartar las 500 iteraciones iniciales como burnin.</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>mod <span class="ot">&lt;-</span> <span class="fu">cmdstan_model</span>(<span class="st">"modelo_p6_exp.stan"</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>stan_data <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">N =</span> <span class="fu">length</span>(datos_obs), </span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>                  <span class="at">y =</span> datos_obs, </span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>                  <span class="at">theta0 =</span> theta_inicial)</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">&lt;-</span> mod<span class="sc">$</span><span class="fu">sample</span>(</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> stan_data,</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">156057</span>,</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">chains =</span> <span class="dv">4</span>,</span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">parallel_chains =</span> <span class="dv">4</span>,</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">iter_warmup =</span> <span class="dv">500</span>,</span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">iter_sampling =</span> <span class="dv">1000</span>,</span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">refresh =</span> <span class="dv">0</span>,</span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">show_messages=</span>F</span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="uzzduanhaw" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#uzzduanhaw table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#uzzduanhaw thead, #uzzduanhaw tbody, #uzzduanhaw tfoot, #uzzduanhaw tr, #uzzduanhaw td, #uzzduanhaw th {
+  border-style: none;
+}
+
+#uzzduanhaw p {
+  margin: 0;
+  padding: 0;
+}
+
+#uzzduanhaw .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#uzzduanhaw .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#uzzduanhaw .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#uzzduanhaw .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#uzzduanhaw .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#uzzduanhaw .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#uzzduanhaw .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#uzzduanhaw .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#uzzduanhaw .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#uzzduanhaw .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#uzzduanhaw .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#uzzduanhaw .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#uzzduanhaw .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#uzzduanhaw .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#uzzduanhaw .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uzzduanhaw .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#uzzduanhaw .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#uzzduanhaw .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#uzzduanhaw .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uzzduanhaw .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#uzzduanhaw .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uzzduanhaw .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#uzzduanhaw .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uzzduanhaw .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#uzzduanhaw .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uzzduanhaw .gt_left {
+  text-align: left;
+}
+
+#uzzduanhaw .gt_center {
+  text-align: center;
+}
+
+#uzzduanhaw .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#uzzduanhaw .gt_font_normal {
+  font-weight: normal;
+}
+
+#uzzduanhaw .gt_font_bold {
+  font-weight: bold;
+}
+
+#uzzduanhaw .gt_font_italic {
+  font-style: italic;
+}
+
+#uzzduanhaw .gt_super {
+  font-size: 65%;
+}
+
+#uzzduanhaw .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#uzzduanhaw .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#uzzduanhaw .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#uzzduanhaw .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#uzzduanhaw .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#uzzduanhaw .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#uzzduanhaw .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="variable">variable</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean">mean</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="sd">sd</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="q5">q5</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="q95">q95</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="variable" class="gt_row gt_left">lp__</td>
+<td headers="mean" class="gt_row gt_right">−7.31</td>
+<td headers="sd" class="gt_row gt_right">0.69</td>
+<td headers="q5" class="gt_row gt_right">−8.73</td>
+<td headers="q95" class="gt_row gt_right">−6.80</td></tr>
+    <tr><td headers="variable" class="gt_row gt_left">theta</td>
+<td headers="mean" class="gt_row gt_right">1.45</td>
+<td headers="sd" class="gt_row gt_right">0.44</td>
+<td headers="q5" class="gt_row gt_right">0.81</td>
+<td headers="q95" class="gt_row gt_right">2.25</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<ol start="4" type="a">
+<li>Monitoreen la convergencia gráficamente usando gráficas ’trace’ y de autocorrelación.</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Extraer las muestras</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>samples <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(fit<span class="sc">$</span><span class="fu">draws</span>(<span class="at">variables=</span><span class="st">'theta'</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">num_sample=</span><span class="fu">seq</span>(<span class="dv">1</span>,<span class="dv">1000</span>, <span class="at">by=</span><span class="dv">1</span>))<span class="sc">%&gt;%</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols=</span><span class="sc">-</span><span class="fu">c</span>(num_sample),</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>               <span class="at">names_to=</span><span class="st">'corrida'</span>, </span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>               <span class="at">values_to=</span><span class="st">'theta'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/unnamed-chunk-25-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/unnamed-chunk-26-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/unnamed-chunk-26-2.png" class="img-fluid" width="672"></p>
+</div>
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/unnamed-chunk-26-3.png" class="img-fluid" width="672"></p>
+</div>
+<div class="cell-output-display">
+<p><img src="Tarea_04_MLG_q_files/figure-html/unnamed-chunk-26-4.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ol start="5" type="a">
+<li>Obtengan estadísticas sumarias posteriores y densidades para <span class="math inline">\(\theta\)</span>, <span class="math inline">\(1/\theta\)</span> y <span class="math inline">\(log(\theta)\)</span></li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>samples <span class="sc">%&gt;%</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">inverso =</span> <span class="dv">1</span> <span class="sc">/</span> theta,</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">logaritmo =</span> <span class="fu">log</span>(theta)) <span class="sc">%&gt;%</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="fu">across</span>(<span class="fu">c</span>(theta, inverso, logaritmo),</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">list</span>(</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>                     <span class="at">mean =</span> <span class="sc">~</span> <span class="fu">mean</span>(.x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>                     <span class="at">median =</span> <span class="sc">~</span> <span class="fu">median</span>(.x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>                     <span class="at">p5 =</span> <span class="sc">~</span> <span class="fu">quantile</span>(.x, <span class="at">probs =</span> <span class="fl">0.05</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>                     <span class="at">p95 =</span> <span class="sc">~</span> <span class="fu">quantile</span>(.x, <span class="at">probs =</span> <span class="fl">0.95</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>                   ),</span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>                   <span class="at">.names =</span> <span class="st">"{.col}_{.fn}"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">everything</span>(), <span class="at">names_to =</span> <span class="fu">c</span>(<span class="st">"statistic"</span>, <span class="st">".value"</span>), <span class="at">names_sep =</span> <span class="st">"_"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gt</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fmt_number</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+
+<div id="czyuzquvmz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#czyuzquvmz table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#czyuzquvmz thead, #czyuzquvmz tbody, #czyuzquvmz tfoot, #czyuzquvmz tr, #czyuzquvmz td, #czyuzquvmz th {
+  border-style: none;
+}
+
+#czyuzquvmz p {
+  margin: 0;
+  padding: 0;
+}
+
+#czyuzquvmz .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#czyuzquvmz .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#czyuzquvmz .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#czyuzquvmz .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#czyuzquvmz .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#czyuzquvmz .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#czyuzquvmz .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#czyuzquvmz .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#czyuzquvmz .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#czyuzquvmz .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#czyuzquvmz .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#czyuzquvmz .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#czyuzquvmz .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#czyuzquvmz .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#czyuzquvmz .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#czyuzquvmz .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#czyuzquvmz .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#czyuzquvmz .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#czyuzquvmz .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#czyuzquvmz .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#czyuzquvmz .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#czyuzquvmz .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#czyuzquvmz .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#czyuzquvmz .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#czyuzquvmz .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#czyuzquvmz .gt_left {
+  text-align: left;
+}
+
+#czyuzquvmz .gt_center {
+  text-align: center;
+}
+
+#czyuzquvmz .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#czyuzquvmz .gt_font_normal {
+  font-weight: normal;
+}
+
+#czyuzquvmz .gt_font_bold {
+  font-weight: bold;
+}
+
+#czyuzquvmz .gt_font_italic {
+  font-style: italic;
+}
+
+#czyuzquvmz .gt_super {
+  font-size: 65%;
+}
+
+#czyuzquvmz .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#czyuzquvmz .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#czyuzquvmz .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#czyuzquvmz .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#czyuzquvmz .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#czyuzquvmz .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#czyuzquvmz .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="statistic">statistic</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean">mean</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="median">median</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="p5">p5</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="p95">p95</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="statistic" class="gt_row gt_left">theta</td>
+<td headers="mean" class="gt_row gt_right">1.45</td>
+<td headers="median" class="gt_row gt_right">1.41</td>
+<td headers="p5" class="gt_row gt_right">0.81</td>
+<td headers="p95" class="gt_row gt_right">2.25</td></tr>
+    <tr><td headers="statistic" class="gt_row gt_left">inverso</td>
+<td headers="mean" class="gt_row gt_right">0.76</td>
+<td headers="median" class="gt_row gt_right">0.71</td>
+<td headers="p5" class="gt_row gt_right">0.44</td>
+<td headers="p95" class="gt_row gt_right">1.23</td></tr>
+    <tr><td headers="statistic" class="gt_row gt_left">logaritmo</td>
+<td headers="mean" class="gt_row gt_right">0.33</td>
+<td headers="median" class="gt_row gt_right">0.34</td>
+<td headers="p5" class="gt_row gt_right">−0.21</td>
+<td headers="p95" class="gt_row gt_right">0.81</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<ol start="5" type="a">
+<li>Con los datos el primer inciso, ahora usen las distribuciones (i)gamma (ii) log-normal para modelar los datos, así como (iii) normal para los logaritmos de los valores originales. En todos los modelos hagan un ejercicio similar al de los numerales previos, y comparen los resultados obtenidos bajo todos los modelos. Hagan todos los supuestos que tengan que hacer.</li>
+</ol>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
