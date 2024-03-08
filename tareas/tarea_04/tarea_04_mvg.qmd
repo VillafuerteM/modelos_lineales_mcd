@@ -11,9 +11,10 @@ authors:
 
 ```{r librerias, echo=FALSE, message=FALSE, warning=FALSE}
 library(bayesplot)
-library(tidyverse)
 library(cmdstanr)
 library(gt)
+library(patchwork)
+library(tidyverse)
 ```
 
 ```{r, echo=FALSE}
@@ -212,7 +213,8 @@ df_melt <- reshape2::melt(df, id.vars = "Step", variable.name = "Kernel", value.
 ggplot(df_melt, aes(x = Step, y = Probability, colour = Kernel)) +
   geom_line() +
   labs(title = "Convergencia de las Probabilidades Estimadas",
-       x = "Pasos", y = "Probabilidad estimada de 1s en la diagonal") +
+       x = "Pasos", 
+       y = "Probabilidad estimada de 1s en la diagonal") +
   theme_minimal()
 
 ```
@@ -226,22 +228,10 @@ $$
 $$\
 Usen la distribución exponencial $Y_i ∼ exp (\theta)$ para modelar estos datos y asignen una inicial sobre $log(\theta)$.\
 
-a.  Definan los datos en WinBUGS (u OpenBUGS). Usen $\theta = 1$ como valor inicial.
-
-b.  Escriban el código para el modelo.
-
-c.  Compilen el modelo y obtengan una muestra de 1000 iteraciones después de descartar las 500 iteraciones iniciales como burnin.
-
-d.  Monitoreen la convergencia gráficamente usando gráficas ’trace’ y de autocorrelación.
-
-e.  Obtengan estadísticas sumarias posteriores y densidades para θ, 1/θ y log θ
-
-f.  Con los datos el primer inciso, ahora usen las distribuciones (i) gamma (ii) log-normal\
-    para modelar los datos, así como (iii) normal para los logaritmos de los valores origi-\
-    nales. En todos los modelos hagan un ejercicio similar al de los numerales previos, y\
-    comparen los resultados obtenidos bajo todos los modelos. Hagan todos los supuestos que tengan que hacer.
+-   Definan los datos en WinBUGS (u OpenBUGS). Usen $\theta = 1$ como valor inicial.
 
 ```{r}
+
 # Datos observados
 datos_obs <- c(0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2)
 
@@ -249,16 +239,36 @@ datos_obs <- c(0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2)
 theta_inicial <- 1
 ```
 
-```{r}
-# Compile the model
+-   Escriban el código para el modelo.
+
+```{text eval=FALSE}
+// Modelo exponencial
+data {
+  int<lower=0> N;       
+  vector[N] y;           
+  real<lower=0> theta0;  
+}
+
+parameters {
+  real<lower=0> theta;
+}
+
+model {
+  theta ~ exponential(1 / theta0);  
+  y ~ exponential(theta);           
+}
+
+```
+
+-   Compilen el modelo y obtengan una muestra de 1000 iteraciones después de descartar las 500 iteraciones iniciales como burnin.
+
+```{r message=FALSE, warning=FALSE}
 mod <- cmdstan_model("modelo_p6_exp.stan")
 
-# Prepare the data for Stan
 stan_data <- list(N = length(datos_obs), 
                   y = datos_obs, 
                   theta0 = theta_inicial)
 
-# Run the MCMC sampler
 fit <- mod$sample(
   data = stan_data,
   seed = 156057,
@@ -266,14 +276,20 @@ fit <- mod$sample(
   parallel_chains = 4,
   iter_warmup = 500,
   iter_sampling = 1000,
-  refresh = 0
+  refresh = 0,
+  show_messages=F
 )
-
-# Print the summary of the fit
-fit_summary <- fit$summary()
-print(fit_summary)
-
 ```
+
+```{r echo=FALSE}
+fit_summary <- fit$summary()
+fit_summary |> 
+  select(variable, mean, sd, q5, q95) |>
+  gt() |> 
+  fmt_number()
+```
+
+-   Monitoreen la convergencia gráficamente usando gráficas ’trace’ y de autocorrelación.
 
 ```{r}
 # Extraer las muestras
@@ -282,15 +298,16 @@ samples <- as.data.frame(fit$draws(variables='theta')) %>%
   pivot_longer(cols=-c(num_sample),
                names_to='corrida', 
                values_to='theta_value')
-
-ggplot(samples, aes(x=num_sample, y=theta_value))+
-  geom_line() +
-  facet_grid(~corrida) +
-  theme_minimal()
-
 ```
 
-```{r}
+```{r echo=FALSE}
+ggplot(samples, aes(x=num_sample, y=theta_value))+
+  geom_line() +
+  facet_wrap(~corrida) +
+  theme_minimal()
+```
+
+```{r echo=FALSE}
 acf(samples%>%
       filter(corrida=='1.theta')%>%
       select(theta_value))
@@ -304,6 +321,13 @@ acf(samples%>%
       filter(corrida=='4.theta')%>%
       select(theta_value))
 ```
+
+-   Obtengan estadísticas sumarias posteriores y densidades para $\theta$, $1/\theta$ y $log(\theta)$
+
+-   Con los datos el primer inciso, ahora usen las distribuciones (i) gamma (ii) log-normal\
+    para modelar los datos, así como (iii) normal para los logaritmos de los valores origi-\
+    nales. En todos los modelos hagan un ejercicio similar al de los numerales previos, y\
+    comparen los resultados obtenidos bajo todos los modelos. Hagan todos los supuestos que tengan que hacer.
 
 ## Anexo
 
