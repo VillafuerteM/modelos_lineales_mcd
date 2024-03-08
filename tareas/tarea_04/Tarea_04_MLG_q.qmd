@@ -291,7 +291,8 @@ ggplot(data = data.frame(X),
                  alpha = 0.7) +
   ggtitle("Histograma de X") +
   xlab("X") +
-  ylab("Densidad")
+  ylab("Densidad") + 
+  theme_minimal()
 ```
 
 -   Ahora supongan que $B =\infty$ así que las distribuciones condicionales completas son ahora las ordinarias distribuciones exponenciales no truncadas. Mostrar analíticamente que $f_x(t) = 1/t$ es una solución a la ecuación integral en este caso: $$f_x(x)=\int \left[\int f_{x|y}(x|y)f_{y|t}(y|t)dy\right]f_x(t)dt$$ ¿El Gibbs sampler convergerá a esta solución?
@@ -431,10 +432,15 @@ res4 <- gibbs(1000, 1, 1)
 
 ```{r echo=FALSE}
 ggplot(data = res4, aes(x = x)) +
-  geom_histogram(bins = 40, aes(y = ..density..), color = "black", fill = "slateblue3", alpha = 0.7) +
+  geom_histogram(bins = 40, 
+                 aes(y = ..density..), 
+                 color = "black", 
+                 fill = "slateblue3", 
+                 alpha = 0.7) +
   ggtitle("Histograma de X") +
   xlab("X") +
-  ylab("Densidad")
+  ylab("Densidad") +
+  theme_minimal()
 ```
 
 ```{r echo=FALSE}
@@ -510,21 +516,41 @@ simulate_metropolis_hastings <- function(p, lambda, kernel, n_steps = 10000) {
   }
   return(cumsum(diagonal_ones_history) / (1:n_steps))
 }
+```
 
+```{r}
 # Parámetros
 p <- 0.5
 lambda <- 0
 n_steps <- 10000
 
 # Simulaciones para ambos kerneles
-probability_history_q1 <- simulate_metropolis_hastings(p, lambda, 'q1', n_steps)
-probability_history_q2 <- simulate_metropolis_hastings(p, lambda, 'q2', n_steps)
+probability_history_q1 <- simulate_metropolis_hastings(p, 
+                                                       lambda, 
+                                                       'q1', 
+                                                       n_steps)
 
+probability_history_q2 <- simulate_metropolis_hastings(p, 
+                                                       lambda, 
+                                                       'q2',
+                                                       n_steps)
+```
+
+```{r echo=FALSE}
 # Graficar la convergencia de las probabilidades
-df <- data.frame(Step = 1:n_steps, Probability_q1 = probability_history_q1, Probability_q2 = probability_history_q2)
-df_melt <- reshape2::melt(df, id.vars = "Step", variable.name = "Kernel", value.name = "Probability")
+df <- data.frame(Step = 1:n_steps, 
+                 Probability_q1 = probability_history_q1,
+                 Probability_q2 = probability_history_q2)
 
-ggplot(df_melt, aes(x = Step, y = Probability, colour = Kernel)) +
+df_melt <- reshape2::melt(df, 
+                          id.vars = "Step", 
+                          variable.name = "Kernel", 
+                          value.name = "Probability")
+
+ggplot(df_melt, 
+       aes(x = Step, 
+           y = Probability, 
+           colour = Kernel)) +
   geom_line() +
   labs(title = "Convergencia de las Probabilidades Estimadas",
        x = "Pasos", 
