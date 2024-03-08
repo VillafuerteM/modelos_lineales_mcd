@@ -49,8 +49,6 @@ Estos autores usaron una parametrización usual en dos parámetros de la forma $
 
 $$logit:p_i= \frac{exp(\alpha+\beta z_i)}{1+exp(\alpha+\beta z_i)}$$ $$probit:p_i= \Phi(\alpha+\beta z_i)$$ $$complementario \quad log-log:p_i=1-exp[-exp(\alpha+\beta z_i)]$$ en donde se usa la covariada centrada $z_i=w_i-\bar{w}$ para reducir la correlación entre la ordenada $\alpha$ y la pendiente $\beta$. En OpenBUGS el código para implementar este modelo es el que sigue:
 
-Lo que sigue al símbolo \# es un comentario, así que esta versión corresponde al modelo logit. También dbin denota la distribución binomial y dnorm denota la distribución normal, donde el segundo argumento denota la precisión, no la varianza (entonces las iniciales normales para $\alpha$ y $\beta$ tienen precisión 0.001, que son aproximadamente iniciales planas (no informativas)). Hacer el análisis en OpenBUGS.
-
 ```         
 model{
 for (i in 1:k){
@@ -64,8 +62,12 @@ dbeta ~ dnorm(0.0,1.0e-3)
 } #fin del código
 ```
 
-```{r}
-dosis <- c(1.6907, 1.7242, 1.7552, 1.7842, 1.8113, 1.8369, 1.8610, 1.8839)
+Lo que sigue al símbolo \# es un comentario, así que esta versión corresponde al modelo logit. También dbin denota la distribución binomial y dnorm denota la distribución normal, donde el segundo argumento denota la precisión, no la varianza (entonces las iniciales normales para $\alpha$ y $\beta$ tienen precisión 0.001, que son aproximadamente iniciales planas (no informativas)). Hacer el análisis en OpenBUGS.
+
+```{r datos_p1}
+dosis <- c(1.6907, 1.7242, 1.7552, 1.7842, 
+           1.8113, 1.8369, 1.8610, 1.8839)
+
 muertos <- c(6, 13, 18, 28, 52, 53, 61, 60)
 expuestos <- c(59, 60, 62, 56, 63, 59, 62, 60)
 
@@ -94,7 +96,7 @@ parameters {
 transformed parameters {
   array[k] real p; // probability of success
   for (i in 1:k) {
-    p[i] = 1 - exp(-exp(alpha + beta * (w[i] - w_mean))); // cloglog
+    p[i] = 1 - exp(-exp(alpha + beta * (w[i] - w_mean))); // loglog
   }
 }
 model {
@@ -106,16 +108,31 @@ model {
 }
 ```
 
-```{r}
+```{r fit_mod1_p1}
 # Realiza el muestreo
-model_fit <- rstan::sampling(model_p1_cloglog, data = data_input)
-# Interpretaciones 
-print(model_fit)
+model_fit <- rstan::sampling(model_p1_cloglog, 
+                             data = data_input,
+                             refresh=0)
 ```
 
-```{r}
+```{r tbl_mod1_p1, echo=FALSE}
+as_tibble(summary(model_fit)$summary, 
+                        .name_repair = "unique") %>% 
+  mutate(variable=c('alpha', 'beta','p_1', 'p_2',
+                    'p_3', 'p_4', 'p_5', 'p_6',
+                    'p_7','p_8','lp_')) %>%
+  select(variable, mean, sd, `50%`, `2.5%`, `97.5%`)%>%
+  gt() %>%
+  tab_header(
+    title = "Resumen de Modelo log-log") %>%
+  fmt_number()
+```
+
+```{r plot_mod1_p1, echo=FALSE}
 plot(model_fit)
 ```
+
+-   Modelo Logit
 
 ```{stan, output.var="modelo_p1_logit"}
 data {
@@ -139,8 +156,6 @@ transformed parameters {
 
   for (i in 1:k) {
     p[i] = inv_logit(alpha + beta * (w[i] - w_mean)); // logit 
-    // p[i] = Phi_approx(alpha + beta * (w[i] - w_mean)); // probit 
-    // p[i] = 1 - exp(-exp(alpha + beta * (w[i] - w_mean))); // cloglog
   }
 }
 
@@ -154,16 +169,31 @@ model {
 }
 ```
 
-```{r}
+```{r fit_mod2_p1}
 # Realiza el muestreo
-model_fit2 <- rstan::sampling(modelo_p1_logit, data = data_input)
-# Interpretaciones 
-print(model_fit2)
+model_fit2 <- rstan::sampling(modelo_p1_logit, 
+                              data = data_input,
+                             refresh=0)
 ```
 
-```{r}
+```{r tbla_mod2_p1, echo=FALSE}
+as_tibble(summary(model_fit2)$summary, 
+                        .name_repair = "unique") %>% 
+  mutate(variable=c('alpha', 'beta','p_1', 'p_2',
+                    'p_3', 'p_4', 'p_5', 'p_6',
+                    'p_7','p_8','lp_')) %>%
+  select(variable, mean, sd, `50%`, `2.5%`, `97.5%`)%>%
+  gt() %>%
+  tab_header(
+    title = "Resumen de Modelo logit") %>%
+  fmt_number()
+```
+
+```{r plot_mod2_p1, echo=FALSE}
 plot(model_fit2)
 ```
+
+-   Modelo probit
 
 ```{stan, output.var="modelo_p1_probit"}
 data {
@@ -186,9 +216,7 @@ transformed parameters {
   array[k] real p; // probability of success
 
   for (i in 1:k) {
-    p[i] = inv_logit(alpha + beta * (w[i] - w_mean)); // logit 
-    // p[i] = Phi_approx(alpha + beta * (w[i] - w_mean)); // probit 
-    // p[i] = 1 - exp(-exp(alpha + beta * (w[i] - w_mean))); // cloglog
+    p[i] = Phi_approx(alpha + beta * (w[i] - w_mean)); // probit
   }
 }
 
@@ -202,14 +230,27 @@ model {
 }
 ```
 
-```{r}
+```{r fit_mod3_p1}
 # Realiza el muestreo
-model_fit3 <- rstan::sampling(modelo_p1_probit, data = data_input)
-# Interpretaciones 
-print(model_fit3)
+model_fit3 <- rstan::sampling(modelo_p1_probit, 
+                              data = data_input,
+                              refresh=0)
 ```
 
-```{r}
+```{r echo=FALSE}
+as_tibble(summary(model_fit3)$summary, 
+                        .name_repair = "unique") %>% 
+  mutate(variable=c('alpha', 'beta','p_1', 'p_2',
+                    'p_3', 'p_4', 'p_5', 'p_6',
+                    'p_7','p_8','lp_')) %>%
+  select(variable, mean, sd, `50%`, `2.5%`, `97.5%`)%>%
+  gt() %>%
+  tab_header(
+    title = "Resumen de Modelo probit") %>%
+  fmt_number()
+```
+
+```{r echo=FALSE}
 plot(model_fit3)
 ```
 
