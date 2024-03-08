@@ -297,11 +297,11 @@ samples <- as.data.frame(fit$draws(variables='theta')) %>%
   mutate(num_sample=seq(1,1000, by=1))%>%
   pivot_longer(cols=-c(num_sample),
                names_to='corrida', 
-               values_to='theta_value')
+               values_to='theta')
 ```
 
 ```{r echo=FALSE}
-ggplot(samples, aes(x=num_sample, y=theta_value))+
+ggplot(samples, aes(x=num_sample, y=theta))+
   geom_line() +
   facet_wrap(~corrida) +
   theme_minimal()
@@ -310,19 +310,36 @@ ggplot(samples, aes(x=num_sample, y=theta_value))+
 ```{r echo=FALSE}
 acf(samples%>%
       filter(corrida=='1.theta')%>%
-      select(theta_value))
+      select(theta))
 acf(samples%>%
       filter(corrida=='2.theta')%>%
-      select(theta_value))
+      select(theta))
 acf(samples%>%
       filter(corrida=='3.theta')%>%
-      select(theta_value))
+      select(theta))
 acf(samples%>%
       filter(corrida=='4.theta')%>%
-      select(theta_value))
+      select(theta))
 ```
 
 -   Obtengan estadísticas sumarias posteriores y densidades para $\theta$, $1/\theta$ y $log(\theta)$
+
+```{r}
+samples %>%
+  mutate(inverso = 1 / theta,
+         logaritmo = log(theta)) %>%
+  summarize(across(c(theta, inverso, logaritmo),
+                   list(
+                     mean = ~ mean(.x, na.rm = TRUE),
+                     median = ~ median(.x, na.rm = TRUE),
+                     p5 = ~ quantile(.x, probs = 0.05, na.rm = TRUE),
+                     p95 = ~ quantile(.x, probs = 0.95, na.rm = TRUE)
+                   ),
+                   .names = "{.col}_{.fn}")) %>%
+  pivot_longer(everything(), names_to = c("statistic", ".value"), names_sep = "_") %>%
+  gt() %>% 
+  fmt_number()
+```
 
 -   Con los datos el primer inciso, ahora usen las distribuciones (i) gamma (ii) log-normal\
     para modelar los datos, así como (iii) normal para los logaritmos de los valores origi-\
