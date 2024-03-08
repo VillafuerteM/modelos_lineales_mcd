@@ -445,30 +445,7 @@ E_Y |> gt()
 5.  Supongan que se tiene una matriz de $4×4$ de variables aleatorias Bernoulli, y la denotamos por $[X_{ij}]$, y sea $N(X)$ el número total de éxitos en $X$ (la suma de $X$) y $D(X)$ es el total de vecinos de dichos éxitos (horizontales o verticales) que difieren. Por ejemplo,
 
 $$
-X \quad \quad \quad \quad \quad \quad \quad \quad \quad N(X)
-\quad \quad \quad \quad \quad \quad \quad \quad \quad D(X)
-$$
-
-$$
-\begin{bmatrix}
-1 & 0 & 0 & 0 \\
-0 & 0 & 0 & 0 \\
-0 & 0 & 0 & 0 \\
-0 & 0 & 0 & 0
-\end{bmatrix}
-\quad \quad \quad \quad \quad \quad \quad \quad \quad 1
-\quad \quad \quad \quad \quad \quad \quad \quad \quad 2
-$$
-
-$$
-\begin{bmatrix}
-1 & 1 & 0 & 0 \\
-0 & 1 & 0 & 0 \\
-0 & 0 & 0 & 0 \\
-0 & 0 & 0 & 0
-\end{bmatrix}
-\quad \quad \quad \quad \quad \quad \quad \quad \quad 3
-\quad \quad \quad \quad \quad \quad \quad \quad \quad 5
+\begin{array}{ccc}    X & N(X) & D(X) \\    \left( \begin{array}{cccc}    1 & 0 & 0 & 0 \\    0 & 0 & 0 & 0 \\    0 & 0 & 0 & 0 \\    \end{array} \right) & 1 & 2 \\    \\    \left( \begin{array}{ccc}    1 & 1 & 0 \\    0 & 1 & 0 \\    0 & 0 & 0 \\    \end{array} \right) & 3 & 5 \\\end{array}
 $$
 
 Noten que si se escriben los elementos de $X$ en un vector $V$ , entonces existe una matriz $M$ de 24 × 16 tal que $D(X)$ es la suma de los valores absolutos de $MV$. El 24 surge porque hay 24 pares de vecinos a revisar. Supongan que $\pi(X)$, la distribución de $X$, es proporcional a $$\pi(X)\propto p^{N(X)}(1-p)^{16-N(X)}exp(-\lambda D(X))$$ Si $\lambda=0$, las variables son iid Bernoulli$(p)$. Usar el método de Metropolis-Hastings usando los siguientes kerneles de transición. Hay $2^{16}$ posibles estados, uno por cada posible valor de $X$. a) Sea $q_1$ tal que cada transición es igualmente plausible con probabilidad $1/2^{16}$. Esto es, el siguiente estado candidato para $X$ es simplemente un vector de 16 iid Bernoulli$(p)$. b) Sea $q_2$ tal que se elige una de las 16 entradas en $X$ con probabilidad 1/16, y luego se determina el valor de la celda a ser 0 o 1 con probabilidad 0.5 en cada caso. Entonces sólo un elemento de $X$ puede cambiar en cada transición a lo más.
