@@ -13,7 +13,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
+
 library(gt)
 library(ggplot2)
 library(MASS)
@@ -21,6 +21,12 @@ library(patchwork)
 library(R2OpenBUGS)
 library(rjags)
 library(coda)
+library(rstan)
+library(rstantools)
+library(bayesplot)
+library(cmdstanr)
+library(patchwork)
+library(tidyverse)
 ```
 
 Fecha de entrega: 06 de marzo 2024.
@@ -111,7 +117,7 @@ results_df_P1 <- data.frame(N = max(length(za$alpha)),
                             logit_beta = mean(za$beta), 
                             logit_p = mean(za$p))
 
-results_df_P1 %>% gt()
+results_df_P1 |>  gt() |>fmt_number() 
 ```
 
 ##probit
@@ -196,54 +202,77 @@ hist(zc$beta,breaks = 50,prob=T)
     completas, analizadas en el artículo de Casella y George (1992) que
     les incluí como lectura:
 
-    $f(x|y) ∝ y e^{-yx}$ $0 < x < B < ∞$
-    $f(y|x) ∝ x e^{-xy}$ $0 < y < B < ∞$
+    $f(x|y) ∝ y e^{-yx}$ $0 < x < B < ∞$ $f(y|x) ∝ x e^{-xy}$
+    $0 < y < B < ∞$
 
-- Obtener un estimado de la distribución marginal de X cuando B = 10 usando el Gibbs
-sampler.
+-   Obtener un estimado de la distribución marginal de X cuando B = 10
+    usando el Gibbs sampler.
 
 ```{r}
-fxy <- function(x, y){
-  return(y*exp(-y*x))
-}
-fyx <- function(y, x){
-  return(x*exp(-x*y))
-}
+N <- 5000
+X <- rep(0, N)
+Y <- rep(0, N)
 
-fx_marg <- function(x){
-  return(1/x)
-}
+k <- 30
 
-B <- 10
-N <- 10000
-y0 <- 1
-X <- NULL
-fx <- NULL
-Y <- y0
-for(k in 1:N){
-  xi <- runif(1, 0, B)
-  
-  X <- append(X, xi)
-  fx <- append(fx, fx_marg(xi))
-  X <- append(X, xi)
+for(idx_rep in 1:N){
+  x <- rep(1, k)
+  y <- rep(1, k)
+  for(idx_run in 2:k){
+    tmp_x = 11 ## Wert auserhalb des Wertebereichs
+    while(tmp_x > 10){
+        x[idx_run] <- rexp(1, y[idx_run-1]) # definiere einen Zufallswert aus der Randverteilung
+        tmp_x <- x[idx_run]
+      }
+    # jetzt das gleich für y  
+    tmp_y <- 11
+      while(tmp_y > 10){
+        y[idx_run] <- rexp(1, x[idx_run])
+        tmp_y <- y[idx_run]
+      }
+  }
+  X[idx_rep] <- x[k]
+  Y[idx_rep] <- y[k]
 }
-
-results_df_P2a <- data.frame(x = X, y=fx)
-results_df_P2a_order <- results_df_P2a[order(results_df_P2a$x),]
-ggplot(results_df_P2a, aes( x=x, y = y)) + 
-  geom_point()
+ggplot(data = data.frame(X), 
+       aes(x = X)) +
+  geom_histogram(bins = 40, 
+                 aes(y = ..density..), 
+                 color = "black", 
+                 fill = "steelblue", 
+                 alpha = 0.7) +
+  ggtitle("Histograma de X") +
+  xlab("X") +
+  ylab("Densidad") + 
+  theme_minimal()
 ```
 
-
-
-- Ahora supongan que $B = ∞$ así que las distribuciones condicionales completas son
-ahora las ordinarias distribuciones exponenciales no truncadas. Mostrar analíticamente
-que $f_x(t) = 1/t$ es una solución a la ecuación integral en este caso:
+-   Ahora supongan que $B = ∞$ así que las distribuciones condicionales
+    completas son ahora las ordinarias distribuciones exponenciales no
+    truncadas. Mostrar analíticamente que $f_x(t) = 1/t$ es una solución
+    a la ecuación integral en este caso:
 
 $f_x(x)=\int{[\int f_{x|y}(x|y) f_{y|x}(y|x) dy] f_x(t)dt}$
 
 ¿El Gibbs sampler convergerá a esta solución?
 
+Usando la función dada:
+$$f_x(x)=\int \left[\int f_{x|y}(x|y)f_{y|t}(y|t)dy\right]f_x(t)dt$$
+$$=\int \left[\int ye^{-yx}te^{-ty}dy \right]f_x(t)dt$$
+$$=\int t\left[\int ye^{-yx}e^{-ty}dy \right]f_x(t)dt$$ Substituyendo
+$f_x(t)=\frac{1}{t}$ tenemos:
+$$=\int\left[\frac{t}{(x+t)^2} \right]\frac{1}{t}dt$$ $$=\frac{1}{x}$$
+Aunque esta es una solución, 1/x no es una función de densidad. Cuando
+se aplica el muestreador de Gibbs a las densidades condicionales, la
+convergencia se rompe. No da una aproximación a 1/x, de hecho, no
+obtenemos una muestra de variables aleatorias de una distribución
+marginal.
+
+3.  
+
+```{=html}
+<!-- -->
+```
 3.  Supongan que una variable aleatoria y se distribuye de acuerdo a la
     densidad poli-Cauchy:
     $g(y) = \prod_i^n{\frac{1}{\pi (1+(y-a_i)^2)}}$
@@ -257,14 +286,13 @@ $n = 6$ y $a = (1, 2, 2, 6, 7, 8)$.
 logy <- function(vec_a, y){
   logg_y <- 0
   for (k in 1:length(vec_a)){
-    arg_log <- pi*(1 + (y-vec_a[k])^2)
+    arg_log <- 3.14*(1 + (y-vec_a[k])^2)
     logg_y <- logg_y - log(arg_log)
   }
   return(logg_y)
 }
 
 ```
-
 
 -   Escriban una función que tome una muestra de tamaño 10,000 de la
     densidad de y, usando Metropolis-Hastings con función propuesta una
@@ -280,8 +308,9 @@ N = 10000
 y <- runif(1)
 f_x = logy(vec_a, y)
 mu_f = 0
-var_f = c(100, 10, 1, 0.1, 0.01, .001)
+var_f = c(5, 2, 1, 0.1, 0.01, .001)
 acceptance_count_vec <- NULL
+y_vec <- NULL
 for (m in var_f){
     acceptance_count = 0
     for (k in 1:N){
@@ -300,13 +329,12 @@ for (m in var_f){
 }
 results_df_P3 <- data.frame(var_vec = var_f,
                         acceptance_count_vec,
-                        var = c("100", "10", "1", "0.1", "0.01", ".001"))
+                        var = c("5", "2", "1", "0.1", "0.01", ".001"))
 
 ggplot(results_df_P3, aes(x=var, y=acceptance_count_vec)) +
      geom_bar(stat="identity")
 
 ```
-
 
 -   Usando la muestra simulada de una “buena” elección de C, aproximar
     la probabilidad P(6 \< Y \< 8).
@@ -317,20 +345,21 @@ Suponmos que una buena C es 0.1.
 vec_a <- c(1,2,2,6,7,8)
 n = 6
 N = 10000
-for(t in 1:N/100){
+acceptance_count_vec <- NULL
+P_vec <- NULL
+for(t in 1:10){
   y <- runif(1)
   f_x = logy(vec_a, y)
   mu_f = 0
   var_f = c(0.1)
-  acceptance_count_vec <- NULL
-  P_vec <- NULL
+
   for (m in var_f){
       acceptance_count = 0
       for (k in 1:N){
         y_new <- y + rnorm(1, mu_f, m)
         f_x_new <- logy(vec_a, y_new)
         acceptance <- min(1, y*f_x_new/(y_new*f_x))
-        compar_value = runif(1)
+        compar_value = log(runif(1))
         y_vec <- append(y_vec, ifelse(compar_value<acceptance, y_new, y))
         f_x <- ifelse(compar_value<acceptance, f_x_new, f_x)
         if(compar_value<acceptance){
@@ -344,12 +373,12 @@ for(t in 1:N/100){
   low_lim <- 6
   up_lim <- 8
   
-  values_smaller_equal_than_low_lim <- results_df_P3c$Y[results_df_P3c$Y<=low_lim]
+  values_smaller_equal_than_low_lim <- y_vec[y_vec<=low_lim]
   
-  values_smaller_equal_than_up_lim <- results_df_P3c$Y[results_df_P3c$Y<=up_lim]
+  values_smaller_equal_than_up_lim <- y_vec[y_vec<=up_lim]
   n_low <- length(values_smaller_equal_than_low_lim)
   n_up <- length(values_smaller_equal_than_up_lim)
-  n_total <- length(results_df_P3c$Y)
+  n_total <- length(y_vec)
   P <- (n_up-n_low)/n_total
   P_vec <- append(P_vec, P)
 }
@@ -360,18 +389,424 @@ results_df_P3cP <- data.frame(P_vec,
 
 ```
 
-    
-4. Supongan que el vector (X, Y ) tiene función de distribución conjunta:
+4.  Supongan que el vector (X, Y ) tiene función de distribución
+    conjunta:
+
+    $$f(x,y)=\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}, \quad x>0, \quad y=0,1,2,...$$
 
 y deseamos simular de la densidad conjunta.
 
-- Mostrar que la densidad condicional $f(x|y)$ es una Gamma e identificar los parámetros.
-- Mostrar que la densidad condicional $f(y|x)$ es Poisson.
-- Escriban una función para implementar el Gibbs sampler cuando las constantes son
-dadas con valores $a = 1$ y $b = 1$.
--Con su función, escriban 1000 ciclos del Gibbs sampler y de la salida, hacer los histogramas
-y estimar $E(Y )$.
+-   Mostrar que la densidad condicional $f(x|y)$ es una Gamma e
+    identificar los parámetros.
+
+> Para encontrar la densidad condicional $f(x|y)$, primero necesitamos
+> encontrar la densidad marginal de $Y$,$f_Y(y)$ ya que la densidad
+> condicional se define como: $$f(x|y)=\frac{f(x,y)}{f_Y(y)}$$ Dada la
+> función de distribución conjunta, podemos encontrar la densidad
+> marginal de $Y$ integrando sobre todos los posibles varores de $x$:
+> $$ f_Y(y)=\int_{0}^{\infty}f(x,y)dx $$
+> $$ =\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}dx $$
+> Sacando los terminos que no dependen de $x$ de la integral, tenemos:
+> $$ =\frac{b^a}{y!\Gamma(a)}\int_{0}^{\infty}x^{a+y-1}e^{-(1+b)x}dx $$
+> Recordemos que la función Gamma se define como:
+> $$f_X(x)=\frac{\lambda}{\Gamma(\alpha)}(\lambda x)^{\alpha-1}e^{-\lambda}$$
+> donde $$\Gamma (\alpha )=\int _{0}^{\infty }t^{\alpha -1}e^{-t}dt$$ Y
+> la de densidad acumulada es:
+> $$ F_{X}(x)=\int _{0}^{x}{\frac {\lambda }{\Gamma (\alpha )}}(\lambda y)^{\alpha -1}e^{-\lambda y}\;dy $$
+> La integral que tenemos esta incompleta por lo que agregaremos un 1
+> para completar una Gamma con parámetros $(a+y)$ y $(1+b)$:
+> $$ =\frac{b^a}{y!\Gamma(a)}\Gamma(a+y)\int_{0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}dx $$
+> $$ f_Y(y)=\frac{b^a\Gamma(a+y)}{y!\Gamma(a)} $$ Ahora podemos
+> encontrar la densidad condicional $f(x|y)$:
+> $$f(x|y)=\frac{f(x,y)}{f_Y(y)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{b^a\Gamma(a+y)}{y!\Gamma(a)}}$$
+> Simplificamos y obtenemos:
+> $$f(x|y)=\frac{x^{a+y-1}e^{-(1+b)x}}{\Gamma(a+y)}$$ Identificamos que
+> la distribución condicional $f(x|y)$ es una distribución Gamma con
+> parámetros $\alpha=(a+y)$ y $\beta=(1+b)$
+
+-   Mostrar que la densidad condicional $f(y|x)$ es Poisson.
+
+> Para encontrar la densidad condicional $f(y|x)$, primero necesitamos
+> encontrar la densidad marginal de $X$,$f_X(x)$ ya que la densidad
+> condicional se define como: $$f(y|x)=\frac{f(x,y)}{f_X(x)}$$ Dada la
+> función de distribución conjunta, podemos encontrar la densidad
+> marginal de $X$ sumando para todos los posibles varores de $y$:
+> $$ f_X(x)=\sum_{y=0}^{\infty}f(x,y) $$
+> $$ =\sum_{y=0}^{\infty}\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}$$
+> Se sacan de la sumatoria los terminos que no depende de $y$, quedando:
+> $$ =\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}\frac{e^{-x}x^{a+y-1}}{y!} $$
+> $$ =\frac{e^{-bx}b^a}{\Gamma(a)}\sum_{y=0}^{\infty}e^{-x}\left(\frac{x^{a+y-1}}{y!}\right) $$
+> $$ =\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}\sum_{y=0}^{\infty} x^{a-1} \frac{x^y}{y!} $$
+> $$ =\frac{e^{-bx}b^a}{\Gamma(a)}e^{-x}e^{x}x^{a-1} $$
+> $$ f_X(x)=\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1} $$ Entonces la densidad
+> condicional de $f(y|x)$ es:
+> $$f(y|x)=\frac{f(x,y)}{f_X(x)}=\frac{\frac{x^{a+y-1}e^{-(1+b)x}b^a}{y!\Gamma(a)}}{\frac{e^{-bx}b^a}{\Gamma(a)}x^{a-1}}$$
+> $$ f(y|x)=\frac{e^{-x}x^y}{y!} \quad \sim Possion(x) $$
+
+-   Escriban una función para implementar el Gibbs sampler cuando las
+    constantes son dadas con valores $a = 1$ y $b = 1$. -Con su función,
+    escriban 1000 ciclos del Gibbs sampler y de la salida, hacer los
+    histogramas y estimar $E(Y )$.
+
+```{r}
+fx_y <- function(x, y, a, b){ return(dgamma(x, shape = (a + y), rate = (1 + b))) }
+
+fy_x <- function(y, x){ return(dpois(y, lambda = x)) }
+
+gibbs <- function(n, a, b){
+  x = rep(0, n)
+  y = rep(0, n)
+  x[1] = 1
+  y[1] = 1
+  for(i in 2:n){
+    x[i] = rgamma(1, shape = (a + y[i-1]), rate = (1 + b))
+    y[i] = rpois(1, lambda = x[i])
+  }
+  return(data.frame(x, y))
+}
+```
+
+-   Con su función, escriban 1,000 ciclos del Gibbs sampler y de la
+    salida, hacer los histogramas y estimar $E(Y)$.
+
+```{r}
+res4 <- gibbs(1000, 1, 1)
+```
+
+```{r echo=FALSE}
+ggplot(data = res4, aes(x = x)) +
+  geom_histogram(bins = 40, 
+                 aes(y = ..density..), 
+                 color = "black", 
+                 fill = "slateblue3", 
+                 alpha = 0.7) +
+  ggtitle("Histograma de X") +
+  xlab("X") +
+  ylab("Densidad") +
+  theme_minimal()
+```
+
+```{r echo=FALSE}
+E_Y <- data.frame(E_Y = mean(res4$y))
+E_Y |> gt()
+```
+
+5.  Supongan que se tiene una matriz de $4×4$ de variables aleatorias
+    Bernoulli, y la denotamos por $[X_{ij}]$, y sea $N(X)$ el número
+    total de éxitos en $X$ (la suma de $X$) y $D(X)$ es el total de
+    vecinos de dichos éxitos (horizontales o verticales) que difieren.
+    Por ejemplo,
+
+    $$ \begin{array}{ccc}    X & N(X) & D(X) \\    \left( \begin{array}{cccc}    1 & 0 & 0 & 0 \\    0 & 0 & 0 & 0 \\    0 & 0 & 0 & 0 \\    \end{array} \right) & 1 & 2 \\    \\    \left( \begin{array}{ccc}    1 & 1 & 0 \\    0 & 1 & 0 \\    0 & 0 & 0 \\    \end{array} \right) & 3 & 5 \\\end{array} $$
+
+    Noten que si se escriben los elementos de $X$ en un vector $V$ ,
+    entonces existe una matriz $M$ de 24 × 16 tal que $D(X)$ es la suma
+    de los valores absolutos de $MV$. El 24 surge porque hay 24 pares de
+    vecinos a revisar. Supongan que $\pi(X)$, la distribución de $X$, es
+    proporcional a
+    $$\pi(X)\propto p^{N(X)}(1-p)^{16-N(X)}exp(-\lambda D(X))$$ Si
+    $\lambda=0$, las variables son iid Bernoulli$(p)$. Usar el método de
+    Metropolis-Hastings usando los siguientes kerneles de transición.
+    Hay $2^{16}$ posibles estados, uno por cada posible valor de $X$. a)
+    Sea $q_1$ tal que cada transición es igualmente plausible con
+    probabilidad $1/2^{16}$. Esto es, el siguiente estado candidato para
+    $X$ es simplemente un vector de 16 iid Bernoulli$(p)$. b) Sea $q_2$
+    tal que se elige una de las 16 entradas en $X$ con probabilidad
+    1/16, y luego se determina el valor de la celda a ser 0 o 1 con
+    probabilidad 0.5 en cada caso. Entonces sólo un elemento de $X$
+    puede cambiar en cada transición a lo más.
+
+    Ambas $q$’s son simétricas, irreducibles y tienen diagonales
+    positivas. La primera se mueve más rápido que la segunda. Estamos
+    interesados en la probabilidad de que todos los elementos de la
+    diagonal sean 1. Usen las dos $q$’s para estimar la probabilidad de
+    1’s en la diagonal para $\lambda=0, 1,3$ y $p=0.5,0.8$. Esto se
+    puede hacer calculando la fracción acumulada de veces que la cadena
+    tiene 1’s sobre la diagonal conforme se muestrea de la cadena.
+    Comparar los resultados de las 2 cadenas. Tienen el mismo valor
+    asintótico, pero ¿una cadena llega más rápido que la otra? ¿Alguna
+    cadena muestra más autocorrelación que la otra (por ejemplo,
+    estimados de la probabilidad en 100 pasos sucesivos muestran más
+    correlación para una cadena que para la otra?). En este problema,
+    también determinen cuántas simulaciones hay que hacer, para desechar
+    el periodo de calentamiento.
+
+    ```{r}
+    # funciones
+    pi <- function(X, p, lambda) {
+      N_X <- sum(X)
+      D_X <- D(X)
+      return((p^N_X) * ((1 - p)^(16 - N_X)) * exp(-lambda * D_X))
+    }
+
+    D <- function(X) {
+      differences <- 0
+      for (i in 1:4) {
+        for (j in 1:4) {
+          if (j < 4) {
+            differences <- differences + as.numeric(X[i, j] != X[i, j+1])
+          }
+          if (i < 4) {
+            differences <- differences + as.numeric(X[i, j] != X[i+1, j])
+          }
+        }
+      }
+      return(differences)
+    }
+
+    q1_generate <- function(p) {
+      return(matrix(rbinom(16, 1, p), nrow = 4, ncol = 4))
+    }
+
+    q2_generate <- function(X) {
+      X_prime <- X
+      i <- sample(1:4, 1)
+      j <- sample(1:4, 1)
+      X_prime[i, j] <- 1 - X_prime[i, j]
+      return(X_prime)
+    }
+
+    metropolis_hastings_step <- function(X, p, lambda, kernel) {
+      if (kernel == 'q1') {
+        X_prime <- q1_generate(p)
+      } else if (kernel == 'q2') {
+        X_prime <- q2_generate(X)
+      }
+      acceptance_prob <- min(1, pi(X_prime, p, lambda) / pi(X, p, lambda))
+      if (runif(1) < acceptance_prob) {
+        return(X_prime)
+      } else {
+        return(X)
+      }
+    }
+
+    simulate_metropolis_hastings <- function(p, lambda, kernel, n_steps = 10000) {
+      X <- matrix(rbinom(16, 1, p), nrow = 4, ncol = 4)
+      diagonal_ones_history <- numeric(n_steps)
+      for (step in 1:n_steps) {
+        X <- metropolis_hastings_step(X, p, lambda, kernel)
+        diagonal_ones_history[step] <- all(diag(X) == 1)
+      }
+      return(cumsum(diagonal_ones_history) / (1:n_steps))
+    }
+    ```
+
+6.  Considera los siguientes números:
+    $$0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2$$ Usen la
+    distribución exponencial $Y_i\sim exp(\theta)$ para modelar estos
+    datos y asignen una inicial sobre $log(\theta)$
+
+    <!-- -->
+
+    a)  Definan los datos enWinBUGS (u OpenBUGS). Usen $\theta=1$ como
+        valor inicial.
+
+    ```{r} # Datos observados datos_obs <- c(0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2)  # Valor inicial para theta theta_inicial <- 1}
+    ```
+
+    b)  Escriban el código para el modelo.
+
+    ```{stan, output.var="modelo_p6_exp"} // Modelo exponencial data {   int<lower=0> N;          vector[N] y;              real<lower=0> theta0;   }  parameters {   real<lower=0> theta; }  model {   theta ~ exponential(1 / theta0);     y ~ exponential(theta);            }
+    ```
+
+    c)  Compilen el modelo y obtengan una muestra de 1000 iteraciones
+        después de descartar las 500 iteraciones iniciales como burnin.
+
+    ```{r message=FALSE, warning=FALSE} mod <- cmdstan_model("modelo_p6_exp.stan")  stan_data <- list(N = length(datos_obs),                    y = datos_obs,                    theta0 = theta_inicial)  fit <- mod$sample(   data = stan_data,   seed = 156057,   chains = 4,   parallel_chains = 4,   iter_warmup = 500,   iter_sampling = 1000,   refresh = 0,   show_messages=F )}
+    ```
+
+    ```{r echo=FALSE} fit_summary <- fit$summary() fit_summary |>    select(variable, mean, sd, q5, q95) |>   gt() |>    fmt_number()}
+    ```
+
+    d)  Monitoreen la convergencia gráficamente usando gráficas ’trace’
+        y de autocorrelación.
+
+    ```{r} # Extraer las muestras samples <- as.data.frame(fit$draws(variables='theta')) %>%   mutate(num_sample=seq(1,1000, by=1))%>%   pivot_longer(cols=-c(num_sample),                names_to='corrida',                 values_to='theta')}
+    ```
+
+    ```{r echo=FALSE} ggplot(samples, aes(x=num_sample, y=theta))+   geom_line() +   facet_wrap(~corrida) +   theme_minimal()}
+    ```
+
+    ```{r echo=FALSE} acf(samples |>       filter(corrida=='1.theta') |>       select(theta)) acf(samples |>       filter(corrida=='2.theta') |>       select(theta)) acf(samples |>       filter(corrida=='3.theta') |>       select(theta)) acf(samples |>       filter(corrida=='4.theta') |>       select(theta))}
+    ```
+
+    e)  Obtengan estadísticas sumarias posteriores y densidades para
+        $\theta$, $1/\theta$ y $log(\theta)$
+
+    ```{r} samples %>%   mutate(inverso = 1 / theta,          logaritmo = log(theta)) %>%   summarize(across(c(theta, inverso, logaritmo),                    list(                      mean = ~ mean(.x, na.rm = TRUE),                      median = ~ median(.x, na.rm = TRUE),                      p5 = ~ quantile(.x, probs = 0.05, na.rm = TRUE),                      p95 = ~ quantile(.x, probs = 0.95, na.rm = TRUE)                    ),                    .names = "{.col}_{.fn}")) %>%   pivot_longer(everything(), names_to = c("statistic", ".value"), names_sep = "_") %>%   gt() %>%    fmt_number()}
+    ```
+
+<!-- -->
+
+f)  Con los datos el primer inciso, ahora usen las distribuciones
+    (i)gamma (ii) log-normal para modelar los datos, así como (iii)
+    normal para los logaritmos de los valores originales. En todos los
+    modelos hagan un ejercicio similar al de los numerales previos, y
+    comparen los resultados obtenidos bajo todos los modelos. Hagan
+    todos los supuestos que tengan que hacer.
+
+```{r}
+# Datos observados
+datos_obs <- c(0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2)
+
+# Valor inicial para theta
+a_inicial <- 1
+b_inicial <- 1
+```
+
+f i)
+
+```{stan, output.var="modelo_p6_gamma"}
+// Modelo gamma 
+  data {
+    int<lower=0> N;
+    vector[N] y;
+    real<lower=0> a0; 
+    real<lower=0> b0; 
+    }
+
+  parameters { 
+    real<lower=0> a; 
+    real<lower=0> b; 
+    }
+
+model { 
+  a ~  exponential(a0);
+  b ~  exponential(b0); 
+  y ~ gamma(a, b);
+}
+```
+
+f i) Compilen el modelo y obtengan una muestra de 1000 iteraciones
+después de descartar las 500 iteraciones iniciales como burnin.
+
+```{r message=FALSE, warning=FALSE}
+mod <- cmdstan_model("modelo_p6_gamma.stan")
+
+stan_data <- list(N = length(datos_obs), 
+                  y = datos_obs, 
+                  a0 = a_inicial,
+                  b0 = b_inicial)
+
+fit <- mod$sample(
+  data = stan_data,
+  seed = 156057,
+  chains = 4,
+  parallel_chains = 4,
+  iter_warmup = 500,
+  iter_sampling = 1000,
+  refresh = 0,
+  show_messages=F
+)
 
 
-5. Supongan que se tiene una matriz de 4 × 4 de variables aleatorias Bernoulli, y la denotamos por $[X_{ij} ]$, y sea $N(X)$ el número total de éxitos en $X$ (la suma de $X$) y $D(X)$ es el total de vecinos de dichos éxitos (horizontales o verticales) que difieren. Por ejemplo,
+```
 
+```{r echo=FALSE}
+fit_summary <- fit$summary()
+fit_summary |> 
+  dplyr::select(variable, mean, sd, q5, q95) |>
+  gt() |> 
+  fmt_number()
+
+```
+
+f i d) Monitoreen la convergencia gráficamente usando gráficas ’trace’ y
+de autocorrelación.
+
+```{r}
+# Extraer las muestras
+samples <- as.data.frame(fit$draws(variables='a')) %>%
+  mutate(num_sample=seq(1,1000, by=1))%>%
+  pivot_longer(cols=-c(num_sample),
+               names_to='corrida', 
+               values_to='a')
+```
+
+```{r echo=FALSE}
+ggplot(samples, aes(x=num_sample, y=a))+
+  geom_line() +
+  facet_wrap(~corrida) +
+  theme_minimal()
+```
+
+```{r echo=FALSE}
+acf(samples |>
+      filter(corrida=='1.a') |>
+      dplyr::select(a)
+      )
+acf(samples |>
+      filter(corrida=='2.a') |>
+      dplyr::select(a)
+  )
+acf(samples |>
+      filter(corrida=='3.a') |>
+      dplyr::select(a)
+  )
+acf(samples |>
+      filter(corrida=='4.a') |>
+      dplyr::select(a)
+    )
+```
+
+e)  Obtengan estadísticas sumarias posteriores y densidades para
+    $\alpha$, $1/\alpha$ y $log(\alpha)$
+
+```{r}
+samples %>%
+  mutate(inverso = 1 / a,
+         logaritmo = log(a)) %>%
+  summarize(across(c(a, inverso, logaritmo),
+                   list(
+                     mean = ~ mean(.x, na.rm = TRUE),
+                     median = ~ median(.x, na.rm = TRUE),
+                     p5 = ~ quantile(.x, probs = 0.05, na.rm = TRUE),
+                     p95 = ~ quantile(.x, probs = 0.95, na.rm = TRUE)
+                   ),
+                   .names = "{.col}_{.fn}")) %>%
+  pivot_longer(everything(), names_to = c("statistic", ".value"), names_sep = "_") %>%
+  gt() %>% 
+  fmt_number()
+```
+
+f i) mit JAGS
+
+```{r}
+# Datos observados
+datos_obs <- c(0.4, 0.01, 0.2, 0.1, 2.1, 0.1, 0.9, 2.4, 0.1, 0.2)
+
+# Valor inicial para theta
+theta_inicial <- 1
+```
+
+```{r}
+cat("model{
+for (i in 1:k){
+y[i] ~ dexp(theta)
+}
+theta ~ dgamma(0.01, 0.01)
+  } ", file="jags_model06fi.txt")
+
+##
+data06 <- list("k"=length(datos_obs), "y"=datos_obs)
+
+m6fi <- jags.model(file = "jags_model06fi.txt",
+                   data = data06, 
+                   n.chains = 20,
+                   n.adapt = 1000) # burn-in
+update(m6fi,1000)
+
+jags_P6 <-jags.samples (m6fi, c("theta"), 1000, type = c("trace"), force.list = TRUE)
+
+theta_result <- NULL
+for (k in 1:(1000*20)){
+  theta_result <- append(theta_result, jags_P6$trace$theta[k])
+}
+df_result_P6fi <- data.frame(theta_result)
+df_result_P6fi_sum <- df_result_P6fi |> summarise( mean_val  = mean(theta_result), 
+                                                   median_val = median(theta_result),
+                                                   q05 = quantile(theta_result, 0.05), 
+                                                   q95 = quantile(theta_result, 0.95))
+
+df_result_P6fi_sum |> gt()
+```
