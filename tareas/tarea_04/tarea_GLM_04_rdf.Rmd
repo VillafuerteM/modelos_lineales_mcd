@@ -803,11 +803,19 @@ theta_result <- NULL
 for (k in 1:(1000*20)){
   theta_result <- append(theta_result, jags_P6$trace$theta[k])
 }
-df_result_P6fi <- data.frame(theta_result)
-df_result_P6fi_sum <- df_result_P6fi |> summarise( mean_val  = mean(theta_result), 
-                                                   median_val = median(theta_result),
-                                                   q05 = quantile(theta_result, 0.05), 
-                                                   q95 = quantile(theta_result, 0.95))
+df_result_P6fi <- data.frame(theta = theta_result)
+df_result_P6fi <- df_result_P6fi %>% mutate(inverso = 1/theta, 
+                          logaritmo = log(theta_result))
+df_result_P6fi_sum <- df_result_P6fi |> summarise(across(c(theta, inverso, logaritmo), 
+                                                         list( mean  = ~ mean(.x,na.rm = TRUE), 
+                                                   median = ~ median(.x,na.rm = TRUE),
+                                                   q05 = ~ quantile(.x, 0.05,na.rm = TRUE), 
+                                                   q95 = ~ quantile(.x, 0.95,na.rm = TRUE)
+                                                   ), 
+                                                  .names = "{.col}_{.fn}")) |>   
+  pivot_longer(everything(), names_to = c("statistic", ".value"), names_sep = "_") |> 
+  gt() |>  
+  fmt_number()
 
-df_result_P6fi_sum |> gt()
+df_result_P6fi_sum
 ```
