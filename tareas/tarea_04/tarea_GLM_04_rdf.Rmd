@@ -769,7 +769,7 @@ samples %>%
   fmt_number()
 ```
 
-f i) mit JAGS
+6a) mit JAGS
 
 ```{r}
 # Datos observados
@@ -784,11 +784,12 @@ cat("model{
 for (i in 1:k){
 y[i] ~ dexp(theta)
 }
-theta ~ dgamma(0.01, 0.01)
+
+theta ~ dexp(1/theta_init)
   } ", file="jags_model06fi.txt")
 
 ##
-data06 <- list("k"=length(datos_obs), "y"=datos_obs)
+data06 <- list("k"=length(datos_obs), "y"=datos_obs, "theta_init"=theta_inicial)
 
 m6fi <- jags.model(file = "jags_model06fi.txt",
                    data = data06, 
