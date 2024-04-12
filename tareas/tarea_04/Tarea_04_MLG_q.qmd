@@ -1,6 +1,8 @@
 ---
 title: "Tarea 4 - Modelos Lineales Generalizados"
-format: html
+format:
+  html:
+    embed-resources: true
 editor: visual  
 ---
 
