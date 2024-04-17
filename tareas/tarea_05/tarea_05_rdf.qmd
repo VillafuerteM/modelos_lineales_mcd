@@ -1,0 +1,64 @@
+---
+title: "Tarea 4 - MLG"
+format: pdf
+editor: visual
+authors: 
+  - "Blanca Garcia - 118886"
+  - "Yuneri Perez - 199813"
+  - "Thomas Rudolf - 169293"
+  - "Mariano Villafuerte - 156057"
+---
+
+```{r librerias, include=FALSE}
+library(tidyverse)
+```
+
+1.  Los datos en el archivo hierarchical_betaBlocker.csv muestran los resultados de 22 ensayos incluídos en un meta-análisis de datos de ensayos clínicos sobre el efecto de los beta bloqueadores en la reducción de riesgo de infarto.\
+    El objetivo de este meta-análisis es determinar un estimador robusto del efecto de los beta bloqueadores combinando información de un rango de estudios previos.
+
+```{r read data}
+data_beta_blocker <- read.csv("hierarchical_betaBlocker.csv")
+```
+
+```         
+a.  Comienza suponiendo que el número de muertes en los grupos de control $(r_i^c)$ y de tratamiento $(r_i^t)$ de cada ensayo están dados por distribuciones binomiales de la forma: $r_i^c \sim \textrm{Bin}(n_i^c , p_i^c)$ y $r_i^t \sim \textrm{Bin}(n_i^t , p_i^t)$, donde $(n_i^c, n_i^t)$ son el número de individuos en los grupos de control y tratamiento respectivamente.\
+
+```
+
+```{r definition of distribution}
+# model
+cat("model{
+# log likelihood amplitud of cutting torque
+for (i in 1:k){
+    logit(rc[i]) ~ mu[i]
+    logit(rt[i]) ~ mu[i] + off[i]  
+    }
+    mu ~ dnorm(0,10)
+    off ~ dnorm(0,10)
+
+  } ", file="jags_beta_blocker.txt")
+  
+
+```
+
+```         
+
+    Adicionalmente suponer que las probabilidades de mortalidad en los conjuntos de tratamiento y control están dados por: $logit(p^c_i) = \mu_i$ y $logit(p_i^t) = \mu_i +\delta_i$. Se espera que $\delta_i<0$ si los beta-bloqueadores tienen el efecto deseado. Se asumen las siguientes iniciales para los parámetros: $\mu_i \sim N(0,10)$ y $\delta_i \sim N(0,10)$.\
+    Estimar la posterior para $\delta_i$ usando el modelo indicado. Notar que para este modelo no hay interdependencia entre los estudios.
+b.  Un marco alternativo es un modelo jerárquico donde se supone que hay una distribución común para todos los ensayos tal que $\delta_i \sim N(d, \sigma^2)$. Suponiendo las siguientes distribuciones iniciales de estos parámetros estimar este modelo: $d \sim N(0,10)$, $\sigma^2 \sim \textrm{Cauchy}(0, 2.5)$.
+c.  Para un ensayo fuera de la muestra suponer que se sabe que $\mu_i=2.5$. Usando la estimación de $\delta$ del estudio cruzado, estimar la reducción en probabilidad para un paciente que toma beta-bloqueadores.
+d.  Estimar un modelo con sólo valores constantes $\delta$ y $\mu$ a través de los ensayos. Graficar la posterior de $\delta$, y comparar con el estimador del modelo jerárquico del estudio.
+```
+
+\newpage
+
+2.  Los siguientes datos son de un estudio (Belenky, et. al. 2003) que mide el efecto de la privación del sueño en el desempeño cognitivo. Hubo 18 sujetos elegidos de una población de internet (conductores de camiones) a los que se les restringió 3 horas de sueño durante el ensayo. En cada día del experimento se midió el tiempo de reacción visual a un estímulo. Los datos para este ejemplo están en el archivo evaluation_sleepstudy.csv, consiste de tres variables: Reaction, Days y SubjetID, que mide el tiempo de reacción de un sujeto dado en un día particular.\
+    Un modelo simple que explica la variación en tiempos de reacción es un modelo de regresión lineal de la forma: $R(t) \sim N(\alpha+\beta t, \sigma^2)$, donde $R(t)$ es el tiempo de reacción en el día $t$ del experimento a través de todas las observaciones.
+    a.  Suponiendo iniciales $N (0, 250)$ para ambos $\alpha$ y $\beta$, ajustar el modelo anterior, usando 1000 muestras por cadena, para cinco cadenas. ¿Converge el algoritmo?
+    b.  Graficar las muestras de la distribución posterior tanto de $\alpha$ como de $\beta$, ¿Cuál es la relación entre las dos variables y por qué?
+    c.  Generar muestras de la distribución posterior predictiva. Superponiendo la serie de tiempo real para cada individuo sobre la gráfica de la distribución posterior predictiva, comentar sobre el ajuste del modelo a los datos.
+    d.  Ajustar un modelo separado $(\alpha, \beta)$ para cada individuo en el conjunto de datos. Usar independientes iniciales normales separadas $N (0, 250)$ para cada parámetro. De nuevo, usar 1000 muestras por cadena para cinco cadenas.
+    e.  Calcular los estimados de las medias posteriores de los parámetros $\beta$ para el modelo de parámetros heterogéneos. ¿Cómo se compara esto al estimador $\beta$ obtenido del modelo homogéneo?
+    f.  Generar muestras de la distribución predictiva posterior. Comparando los datos individuales de cada sujeto las muestras predictivas, comentar sobre el ajuste del nuevo modelo.
+    g.  Particionar los datos en dos subconjuntos: un conjunto de entrenamiento (sujetos 1-17) y un conjunto de prueba (sujeto 18). Ajustando ambos modelos heterogéneo y homogéneo con los datos de entrenamiento, calcular el desempeño de cada modelo para predecir el conjunto de prueba.
+    h.  Alternativamente, se puede ajustar un modelo jerárquico a los datos que (esperamos) capture algunos de los mejores elementos de cada uno de los modelos previos. Ajustar tal modelo usando normales iniciales para $\alpha_i$ y $\beta_i$ y distribuciones iniciales para los hiperparámetros de estas distribuciones.
