@@ -90,25 +90,151 @@ mcmc_areas(
 plot(model_fit, pars = c("delta"), prob = 0.95) + ggtitle("Posterior Densities for delta")
 ```
 
+b.  Un marco alternativo es un modelo jerárquico donde se supone que hay una distribución común para todos los ensayos tal que $\delta_i \sim N(d;\sigma^2)$. Suponiendo las siguientes distribuciones iniciales de estos parámetros estimar este modelo: $d \sim N(0; 10)$, $\sigma^2 \sim Cauchy(0;2.5)$.
+
+```{stan, output.var="modelo1b"}
+
+data { 
+int<lower=0> N; 
+int<lower=0> nt[N]; 
+int<lower=0> rt[N]; 
+int<lower=0> nc[N]; 
+int<lower=0> rc[N]; 
+} 
+
+parameters { 
+real d; 
+real<lower=0> sigma;
+vector[N] mu; 
+vector[N] delta; 
+} 
+
+model { 
+rt ~ binomial_logit(nt, mu + delta); 
+rc ~ binomial_logit(nc, mu); 
+delta ~ normal(d, sigma); 
+mu ~ normal(0, 10); 
+d ~ normal(0, 10); 
+sigma ~ cauchy(0, 2.5); 
+}
+
+generated quantities {
+  real delta_new = normal_rng(d, sigma);
+}
+```
+
+```{r fit_mod1b}
+model_fitb <- rstan::sampling(modelo1b, 
+                              data = betaBl,
+                              refresh = 0,
+                              control = list(adapt_delta = 0.95))
+
+print(model_fitb)
+```
+```{r grafica_mod1a}
+# Configurar esquemas de color para los gráficos
+color_scheme_set("mix-brightblue-gray")
+
+# Trace Plots para los parámetros 'mu' seleccionados
+mcmc_trace(
+  model_fitb,
+  pars = c("mu[1]", "mu[2]", "mu[10]", "mu[20]"),
+  n_warmup = 1000
+) + ggtitle("Trace Plots for Selected mu Parameters")
+
+# Áreas de densidad posterior para los mismos parámetros 'mu'
+mcmc_areas(
+  model_fitb,
+  pars = c("mu[1]", "mu[2]", "mu[10]", "mu[20]"),
+  prob = 0.95
+) + ggtitle("Posterior Densities for Selected mu Parameters")
 
 
-
-
-b.  Un marco alternativo es un modelo jerárquico donde se supone que hay una distribución común para todos los ensayos tal que $\delta_i \sim N(d;\sigma^2)$. Suponiendo las siguientes distribuciones iniciales de estos parámetros estimar este modelo: $d \sim N(0; 10)$, $\sigma^2 \sim Cauchy(0;2:5)$.
+plot(model_fitb, pars = c("delta"), prob = 0.95) + ggtitle("Posterior Densities for delta")
+```
 
 c.  Para un ensayo fuera de la muestra suponer que se sabe que $\mu_i= 2.5$. Usando la estimación de $\delta$ del estudio cruzado, estimar la reducción en probabilidad para un paciente que toma beta-bloqueadores.
 
+```{r estimacion_delta}
+params_hier <- rstan::extract(model_fitb)
+
+hist(params_hier$delta)
+abline(v=0, col="blue")
+```
+
 d.  Estimar un modelo con sólo valores constantes $\delta$ y $\mu$ a través de los ensayos. Graficar la posterior de $\delta$, y comparar con el estimador del modelo jerárquico del estudio.
 
-<!-- -->
+```{r}
+
+```
 
 2.  Los siguientes datos son de un estudio (Belenky, et. al. 2003) que mide el efecto de la privación del sueño en el desempeño cognitivo. Hubo 18 sujetos elegidos de una población de internet (conductores de camiones) a los que se les restringió 3 horas de sueño durante el ensayo. En cada día del experimento se midió el tiempo de reacción visual a un estímulo. Los datos para este ejemplo están en el archivo evaluation_sleepstudy.csv, consiste de tres variables: `Reaction`, `Days` y `SubjetID`, que mide el tiempo de reacción de un sujeto dado en un día particular. Un modelo simple que explica la variación em tiempos de reacción es un modelo de regresión lineal de la forma: $R(t) \sim N(\alpha+ \beta t, \sigma^2)$, donde $R(t)$ es el tiempo de reacción en el día $t$ del experimento a través de todas las observaciones.
-
-<!-- -->
-
 a.  Suponiendo iniciales $N(0; 250)$ para ambos $\alpha$ y $\beta$, ajustar el modelo anterior, usando 1000 muestras por cadena, para cinco cadenas. ¿Converge el algoritmo?
 
+```{r}
+sleepstudy <- read.csv("evaluation_sleepstudy.csv")
+sleepstudy$Days <- as.numeric(sleepstudy$Days)
+sleepstudy$Intercept <- rep(1, nrow(sleepstudy))
+
+sleepstudy_l <- list(
+  N = nrow(sleepstudy),
+  X = cbind(1, sleepstudy$Days),  # cbind para unir interceptos y días
+  R = sleepstudy$Reaction
+)
+
+```
+
+```{stan, output.var="modelo2a"}
+data { 
+  int<lower=0> N;         // Número de observaciones
+  matrix[N,2] X;          // Matriz de diseño: interceptos y días de privación de sueño
+  vector[N] R;            // Tiempos de reacción
+} 
+
+parameters { 
+  vector[2] gamma;        // Coeficientes para intercepto y pendiente
+  real<lower=0> sigma;    // Desviación estándar del error
+} 
+
+model { 
+  gamma ~ normal(0, 250);  // Priors normales para los coeficientes
+  R ~ normal(X * gamma, sigma);  // Modelo lineal
+}
+```
+
+```{r fit_modelo2a}
+# Muestrear del modelo
+fit_modelo2a <- sampling(modelo2a, 
+                         data = sleepstudy_l,
+                         chains = 5,  
+                         iter = 2000,
+                         refresh = 10)
+
+```
+```{r}
+rhat_values <- model_summary$summary[,"Rhat"]
+names <- rownames(model_summary$summary)
+rhat_df <- data.frame(Parameter = names, Rhat = rhat_values)
+
+rhat_table <- gt(rhat_df) |>
+              tab_header(title = "Valores de Rhat") |>
+              cols_label(
+                Parameter = "Parameter",
+                Rhat = "R-hat"
+              )
+
+rhat_table
+```
+>$\hat{R}$: Es el potencial factor de reducción de escala en las cadenas de muestreo. Un $\hat{R}$ de 1 indica que la variación entre cadenas es comparable a la variación dentro de las cadenas, sugiriendo que las cadenas han convergido entre sí.
+Todos los valores de $\hat{R}$ están muy cerca de 1 y por debajo de 1.1, lo que típicamente indica buena convergencia. Según los estándares comunes en análisis Bayesianos usando Stan, consideramos que el modelo ha convergido bien si $\hat{R} < 1.1$ para todos los parámetros estimados.
+
+
 b.  Graficar las muestras de la distribución posterior tanto de $\alpha$ como de $\beta$, ¿Cuál es la relación entre las dos variables y por qué?
+
+```{r}
+# Extraer muestras de la distribución posterior
+posterior_samples <- extract(fit_modelo2a)
+```
 
 c.  Generar muestras de la distribución posterior predictiva. Superponiendo la serie de tiempo real para cada individuo sobre la gráfica de la distribución posterior predictiva, comentar sobre el ajuste del modelo a los datos.
 
