@@ -6,7 +6,7 @@ editor: visual
 
 ![](ITAM.png)
 
-```{r setup, include=FALSE}
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(gt)
 library(ggplot2)
@@ -17,6 +17,7 @@ library(cmdstanr)
 library(gt)
 library(patchwork)
 library(tidyverse)
+theme_set(theme_minimal())
 ```
 
 Fecha de entrega: 22 de abril de 2024
@@ -28,14 +29,18 @@ Fecha de entrega: 22 de abril de 2024
 
 1.  Los datos en el archivo hierarchical_betaBlocker.csv muestran los resultados de 22 ensayos incluídos en un meta-análisis de datos de ensayos clínicos sobre el efecto de los betabloqueadores en la reducción de riesgo de infarto.El objetivo de este meta-análisis es determinar un estimador robusto del efecto de los betabloqueadores combinando información de un rango de estudios previos.
 
-```{=html}
 <!-- -->
-```
+
 a.  Comienza suponiendo que el número de muertes en los grupos de control $(r^{c}_i)$ y de tratamiento $(r^{t}_{i})$ de cada ensayo están dados por distribuciones binomiales de la forma: $r^{c}_i \sim Bin(n^{c}_{i}; p^{c}_{i})$ y $r^{t}_{i} \sim Bin(n^{t}_{i}; p^{t}_{i})$, donde $(n^{c}_{i};n^{t}_{i})$ son el número de individuos en los grupos de control y tratamiento respectivamente. Adicionalmente suponer que las probabilidades de mortalidad en los conjuntos de tratamiento y control están dados por: $logit(p^{c}_{i}) = \mu_i$ y $logit(p^{t}_{i}) = \mu_i + \delta_i$. Se espera que $\delta_i<0$ si los beta-bloqueadores tienen el efecto deseado. Se asumen las siguientes iniciales para los parámetros: $\mu_i \sim N(0;10)$ y $\delta_i \sim N(0; 10)$. Estimar la posterior para $\delta_i$ usando el modelo indicado. Notar que para este modelo no hay interdependencia entre los estudios.
 
 ```{r datos_p1}
 betaB <- read.csv("hierarchical_betaBlocker.csv")
-betaBl <- list(N=22, rt=betaB$rt, nt=betaB$nt, rc=betaB$rc, nc=betaB$nc, N=betaB$N)
+betaBl <- list(N=22, 
+               rt=betaB$rt, 
+               nt=betaB$nt, 
+               rc=betaB$rc, 
+               nc=betaB$nc, 
+               N=betaB$N)
 ```
 
 ```{stan, output.var="modelo1a"}
@@ -60,34 +65,49 @@ model {
   }
 ```
 
-
 ```{r fit_mod1a}
 model_fit <- rstan::sampling(modelo1a, 
                              data = betaBl,
                              refresh = 0)
-print(model_fit)
 ```
 
-```{r grafica_mod1a}
+```{r tbl_model_1a, echo=FALSE}
+model_fit %>%
+  summary() %>%                      
+  .[['summary']] %>%                
+  as.data.frame() %>% 
+  rownames_to_column("parameter")  %>% 
+  select(parameter,mean, sd, "2.5%", "97.5%", n_eff, Rhat) %>%
+  gt() %>%
+  fmt_number()
+```
+
+```{r echo=FALSE}
 # Configurar esquemas de color para los gráficos
 color_scheme_set("mix-brightblue-gray")
+```
 
+Se puede graficar las traza, y ver la densidad de la posterior:
+
+```{r grafica_mod1a, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8.5}
 # Trace Plots para los parámetros 'mu' seleccionados
-mcmc_trace(
+a<- mcmc_trace(
   model_fit,
   pars = c("mu[1]", "mu[2]", "mu[10]", "mu[20]"),
   n_warmup = 1000
-) + ggtitle("Trace Plots for Selected mu Parameters")
+) + ggtitle("Traza de Mu {1, 2, 10 y 20}")
 
 # Áreas de densidad posterior para los mismos parámetros 'mu'
-mcmc_areas(
+b <-mcmc_areas(
   model_fit,
   pars = c("mu[1]", "mu[2]", "mu[10]", "mu[20]"),
   prob = 0.95
-) + ggtitle("Posterior Densities for Selected mu Parameters")
+) + ggtitle("Posteriores de Mu")
 
 
-plot(model_fit, pars = c("delta"), prob = 0.95) + ggtitle("Posterior Densities for delta")
+c <-plot(model_fit, pars = c("delta"), prob = 0.95) + ggtitle("Densidades de la Posterior de Delta")
+
+(b+c)/a
 ```
 
 b.  Un marco alternativo es un modelo jerárquico donde se supone que hay una distribución común para todos los ensayos tal que $\delta_i \sim N(d;\sigma^2)$. Suponiendo las siguientes distribuciones iniciales de estos parámetros estimar este modelo: $d \sim N(0; 10)$, $\sigma^2 \sim Cauchy(0;2.5)$.
@@ -123,53 +143,163 @@ generated quantities {
 }
 ```
 
-```{r fit_mod1b}
+```{r fit_mod1b, warning=FALSE, message=FALSE}
 model_fitb <- rstan::sampling(modelo1b, 
                               data = betaBl,
                               refresh = 0,
                               control = list(adapt_delta = 0.95))
-
-print(model_fitb)
 ```
-```{r grafica_mod1a}
+
+```{r echo=FALSE}
+model_fitb %>%
+  summary() %>%                      
+  .[['summary']] %>%                
+  as.data.frame() %>% 
+  rownames_to_column("parameter")  %>% 
+  select(parameter,mean, sd, "2.5%", "97.5%", n_eff, Rhat) %>%
+  gt() %>%
+  fmt_number()
+```
+
+```{r echo=FALSE}
 # Configurar esquemas de color para los gráficos
 color_scheme_set("mix-brightblue-gray")
+```
 
+```{r grafica_mod1a_2, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8.5}
 # Trace Plots para los parámetros 'mu' seleccionados
-mcmc_trace(
+a <- mcmc_trace(
   model_fitb,
   pars = c("mu[1]", "mu[2]", "mu[10]", "mu[20]"),
   n_warmup = 1000
-) + ggtitle("Trace Plots for Selected mu Parameters")
+) + ggtitle("Trazas de Mu")
+
 
 # Áreas de densidad posterior para los mismos parámetros 'mu'
-mcmc_areas(
+b <- mcmc_areas(
   model_fitb,
   pars = c("mu[1]", "mu[2]", "mu[10]", "mu[20]"),
   prob = 0.95
-) + ggtitle("Posterior Densities for Selected mu Parameters")
+) + ggtitle("Densidades de la Posterior de Mu")
 
 
-plot(model_fitb, pars = c("delta"), prob = 0.95) + ggtitle("Posterior Densities for delta")
+c <- plot(model_fitb, pars = c("delta"), prob = 0.95) + ggtitle("Densidades de la Posterior de Delta")
+
+(b+c)/a
 ```
 
 c.  Para un ensayo fuera de la muestra suponer que se sabe que $\mu_i= 2.5$. Usando la estimación de $\delta$ del estudio cruzado, estimar la reducción en probabilidad para un paciente que toma beta-bloqueadores.
 
-```{r estimacion_delta}
-params_hier <- rstan::extract(model_fitb)
+Vemos una reducción promedio del $2\%$.
 
-hist(params_hier$delta)
-abline(v=0, col="blue")
+```{r estimacion_delta, echo=FALSE}
+# Inverse-logit function
+inv_logit <- function(x) {
+  1 / (1 + exp(-x))
+}
+
+# La mu que nos dijeron
+mu_i <- -2.5
+
+# Extraemos las deltas
+delta_samples <- rstan::extract(model_fitb, pars='delta')
+
+# Para cada delta, calculamos la proba con y sin delta-blockers
+probs_without_beta <- inv_logit(mu_i)
+probs_with_beta <- sapply(delta_samples, function(delta) inv_logit(mu_i - delta))
+
+# calculamos la reducción para cada muestra
+reduction_samples <- probs_without_beta - probs_with_beta
+
+# sacamos las estadísticas
+mean_reduction <- mean(reduction_samples)
+sd_reduction <- sd(reduction_samples)
+ci_reduction <- quantile(reduction_samples, probs = c(0.025, 0.975))
+```
+
+```{r echo=FALSE}
+data.frame(
+  "Red_Prom"=mean_reduction,
+  "sd"=sd_reduction,
+  "lower_95"=ci_reduction[1],
+  "upper_95"=ci_reduction[2]) %>% 
+  gt() %>%
+  fmt_number()
 ```
 
 d.  Estimar un modelo con sólo valores constantes $\delta$ y $\mu$ a través de los ensayos. Graficar la posterior de $\delta$, y comparar con el estimador del modelo jerárquico del estudio.
 
-```{r}
+```{stan, output.var="modelo1d"}
+data { 
+  int<lower=0> N; 
+  int<lower=0> nt[N]; 
+  int<lower=0> rt[N]; 
+  int<lower=0> nc[N]; 
+  int<lower=0> rc[N]; 
+} 
+
+parameters { 
+  real mu;    
+  real delta; 
+} 
+
+model { 
+  rt ~ binomial_logit(nt, mu + delta);
+  rc ~ binomial_logit(nc, mu);  
+  delta ~ normal(0, 10);  
+  mu ~ normal(0, 10); 
+}
 
 ```
 
+```{r}
+model_fitd <- rstan::sampling(modelo1d, 
+                              data = betaBl,
+                              refresh = 0,
+                              control = list(adapt_delta = 0.95))
+```
+
+```{r echo=FALSE}
+model_fitd %>%
+  summary() %>%                      
+  .[['summary']] %>%                
+  as.data.frame() %>% 
+  rownames_to_column("parameter")  %>% 
+  select(parameter,mean, sd, "2.5%", "97.5%", n_eff, Rhat) %>%
+  gt() %>%
+  fmt_number()
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.height=8.5}
+# Trace Plots para los parámetros 'mu' seleccionados
+a <- mcmc_trace(
+  model_fitd,
+  pars = c("mu"),
+  n_warmup = 1000
+) + ggtitle("Trazas de Mu")
+
+
+# Áreas de densidad posterior para los mismos parámetros 'mu'
+b <- mcmc_areas(
+  model_fitd,
+  pars = c("mu"),
+  prob = 0.95
+) + ggtitle("Densidad de la Posterior de Mu")
+
+
+c <- plot(model_fitd, pars = c("delta"), prob = 0.95) + ggtitle("Densidad de la Posterior de Delta")
+
+(b+c)/a
+```
+
 2.  Los siguientes datos son de un estudio (Belenky, et. al. 2003) que mide el efecto de la privación del sueño en el desempeño cognitivo. Hubo 18 sujetos elegidos de una población de internet (conductores de camiones) a los que se les restringió 3 horas de sueño durante el ensayo. En cada día del experimento se midió el tiempo de reacción visual a un estímulo. Los datos para este ejemplo están en el archivo evaluation_sleepstudy.csv, consiste de tres variables: `Reaction`, `Days` y `SubjetID`, que mide el tiempo de reacción de un sujeto dado en un día particular. Un modelo simple que explica la variación em tiempos de reacción es un modelo de regresión lineal de la forma: $R(t) \sim N(\alpha+ \beta t, \sigma^2)$, donde $R(t)$ es el tiempo de reacción en el día $t$ del experimento a través de todas las observaciones.
+
+```{=html}
+<!-- -->
+```
 a.  Suponiendo iniciales $N(0; 250)$ para ambos $\alpha$ y $\beta$, ajustar el modelo anterior, usando 1000 muestras por cadena, para cinco cadenas. ¿Converge el algoritmo?
+
+Los valores de Rhat, nos indicarían que sí hubo convergencia.
 
 ```{r}
 sleepstudy <- read.csv("evaluation_sleepstudy.csv")
@@ -186,20 +316,28 @@ sleepstudy_l <- list(
 
 ```{stan, output.var="modelo2a"}
 data { 
-  int<lower=0> N;         // Número de observaciones
-  matrix[N,2] X;          // Matriz de diseño: interceptos y días de privación de sueño
-  vector[N] R;            // Tiempos de reacción
+  int<lower=0> N;         // Number of observations
+  matrix[N,2] X;          // Design matrix: intercepts and days of sleep deprivation
+  vector[N] R;            // Reaction times
 } 
 
 parameters { 
-  vector[2] gamma;        // Coeficientes para intercepto y pendiente
-  real<lower=0> sigma;    // Desviación estándar del error
+  vector[2] gamma;        // Coefficients for intercept and slope
+  real<lower=0> sigma;    // Standard deviation of the error
 } 
 
 model { 
-  gamma ~ normal(0, 250);  // Priors normales para los coeficientes
-  R ~ normal(X * gamma, sigma);  // Modelo lineal
+  gamma ~ normal(0, 250);  // Normal priors for the coefficients
+  R ~ normal(X * gamma, sigma);  // Linear model
 }
+
+generated quantities {
+  vector[N] R_pred;  // Posterior predictive reaction times
+  for (i in 1:N) {  // Corrected loop statement
+    R_pred[i] = normal_rng(X[i] * gamma, sigma);
+  }
+}
+
 ```
 
 ```{r fit_modelo2a}
@@ -208,42 +346,477 @@ fit_modelo2a <- sampling(modelo2a,
                          data = sleepstudy_l,
                          chains = 5,  
                          iter = 2000,
-                         refresh = 10)
+                         refresh = 0)
 
 ```
-```{r}
-rhat_values <- model_summary$summary[,"Rhat"]
-names <- rownames(model_summary$summary)
-rhat_df <- data.frame(Parameter = names, Rhat = rhat_values)
 
-rhat_table <- gt(rhat_df) |>
-              tab_header(title = "Valores de Rhat") |>
-              cols_label(
-                Parameter = "Parameter",
-                Rhat = "R-hat"
-              )
-
-rhat_table
+```{r echo=FALSE}
+fit_modelo2a %>%
+  summary(pars=c("sigma", "gamma")) %>%                      
+  .[['summary']] %>%                
+  as.data.frame() %>% 
+  rownames_to_column("parameter")  %>% 
+  select(parameter,mean, sd, "2.5%", "97.5%", n_eff, Rhat) %>%
+  gt() %>%
+  fmt_number()
 ```
->$\hat{R}$: Es el potencial factor de reducción de escala en las cadenas de muestreo. Un $\hat{R}$ de 1 indica que la variación entre cadenas es comparable a la variación dentro de las cadenas, sugiriendo que las cadenas han convergido entre sí.
-Todos los valores de $\hat{R}$ están muy cerca de 1 y por debajo de 1.1, lo que típicamente indica buena convergencia. Según los estándares comunes en análisis Bayesianos usando Stan, consideramos que el modelo ha convergido bien si $\hat{R} < 1.1$ para todos los parámetros estimados.
 
+```{r echo=FALSE}
+a <- mcmc_trace(
+  fit_modelo2a,
+  pars=c("sigma", "gamma[1]", "gamma[2]"),
+  n_warmup = 1000
+)
+
+a
+```
+
+> $\hat{R}$: Es el potencial factor de reducción de escala en las cadenas de muestreo. Un $\hat{R}$ de 1 indica que la variación entre cadenas es comparable a la variación dentro de las cadenas, sugiriendo que las cadenas han convergido entre sí. Todos los valores de $\hat{R}$ están muy cerca de 1 y por debajo de 1.1, lo que típicamente indica buena convergencia. Según los estándares comunes en análisis Bayesianos usando Stan, consideramos que el modelo ha convergido bien si $\hat{R} < 1.1$ para todos los parámetros estimados.
 
 b.  Graficar las muestras de la distribución posterior tanto de $\alpha$ como de $\beta$, ¿Cuál es la relación entre las dos variables y por qué?
 
 ```{r}
-# Extraer muestras de la distribución posterior
-posterior_samples <- extract(fit_modelo2a)
+# vemos la correlación lineal
+posterior_samples <- rstan::extract(fit_modelo2a)$gamma
+
+# Calcular la correlación entre los parámetros alpha y beta
+cor_alpha_beta <- cor(posterior_samples[, 1], posterior_samples[, 2])
+```
+
+```{r echo=FALSE}
+tibble(Corr=cor_alpha_beta) %>%
+  gt() %>% fmt_number()
+```
+
+```{r echo=FALSE}
+alpha_beta_df <- data.frame(alpha = posterior_samples[, 1], beta = posterior_samples[, 2])
+
+# Graficar
+ggplot(alpha_beta_df, aes(x = alpha, y = beta)) +
+  geom_point(alpha = 0.1, color='cyan4') +
+  geom_smooth(method = "lm", se = FALSE, color = "red4", linetype='dashed') +
+  labs(title = "Alpha vs Beta",
+       x = "Alpha",
+       y = "Beta")
 ```
 
 c.  Generar muestras de la distribución posterior predictiva. Superponiendo la serie de tiempo real para cada individuo sobre la gráfica de la distribución posterior predictiva, comentar sobre el ajuste del modelo a los datos.
 
+    Para hacer este anáisis nos fijaremos en un individuo al azar. Y veremos cómo son las distribuciones posteriores vs los datos observados del individuo.
+
+    ```{r}
+    # Extracción de muestras predictivas posteriores para las reacciones
+    posterior_predictive <- rstan::extract(fit_modelo2a)$R_pred
+
+    # Numero de cadenas e iteraciones usadas para el muestreo
+    chains <- 5
+    iter <- 2000  # Numero total de iteraciones, incluyendo warmup
+    warmup <- 1000  # Numero de iteraciones de warmup
+    n_sims <- (iter - warmup) * chains  # Numero de simulaciones por observacion
+
+    # Crear 'predicted_long' con el número correcto de filas
+    predicted_long <- data.frame(
+      Days = rep(sleepstudy$Days, times = n_sims),
+      PredictedReaction = as.vector(t(posterior_predictive)), # Transponer para coincidir con el orden correcto
+      Subject = factor(rep(sleepstudy$Subject, times = n_sims))
+    )
+
+    # Filtrar datos para el sujeto específico
+    subject_predictions <- predicted_long %>%
+      filter(Subject == "330")  
+
+    subject_data <- sleepstudy %>%
+      filter(Subject == "330")
+    ```
+
+    Podemos ver que no es muy bueno el ajuste cuando lo hacemos de esta manera.
+
+    ```{r, echo=FALSE, message=FALSE, warning=FALSE}
+    ggplot() +
+      geom_boxplot(data = subject_predictions, aes(x = factor(Days), y = PredictedReaction), 
+                   fill = "cyan4", color = "blue4", alpha = 0.5) +
+      geom_point(data = subject_data, aes(x = factor(Days), y = Reaction), color = "blue", size = 4) +
+      geom_line(data = subject_data, aes(x = factor(Days), y = Reaction, group = Subject), color = "blue", size = 1) +
+      labs(y="Reaccion (Prediccion)", x="Dias")
+    ```
+
 d.  Ajustar un modelo separado $(\alpha; \beta)$ para cada individuo en el conjunto de datos. Usar independientes iniciales normales separadas $N (0; 250)$ para cada parámetro. De nuevo, usar 1000 muestras por cadena para cinco cadenas.
+
+    ```{stan, output.var="modelo2d"}
+    data {
+      int N; // number of observations
+      vector[N] t; // days of sleep deprivation
+      vector[N] R; // reaction times of individuals in the study
+      int subject[N]; // subject ID
+    }
+
+    parameters {
+      real alpha[18];
+      real beta[18];
+      real<lower=0> sigma;
+    }
+
+    model {
+      for (i in 1:N)
+        R[i] ~ normal(alpha[subject[i]] + beta[subject[i]] * t[i], sigma);
+      alpha ~ normal(0, 250);
+      beta ~ normal(0, 250);
+      sigma ~ normal(0, 50);
+    }
+
+    generated quantities {
+      vector[N] R_simulated; // Almacenar muestras predictivas posteriores
+      for (i in 1:N) {
+        R_simulated[i] = normal_rng(alpha[subject[i]] + beta[subject[i]] * t[i], sigma);
+      }
+    }
+
+    ```
+
+    ```{r message=FALSE, warning=FALSE}
+    sleepstudy$Subject <- as.integer(as.factor(sleepstudy$Subject))
+
+    # Preparamos la lista de datos para Stan
+    sleepstudy_l2 <- list(
+      N = nrow(sleepstudy),  # Número total de observaciones
+      t = sleepstudy$Days,   # Vector de días de privación de sueño
+      R = sleepstudy$Reaction,  # Vector de tiempos de reacción
+      subject = sleepstudy$Subject  # Vector de índices de sujeto
+    )
+
+    fit_modelo2d <- sampling(modelo2d, 
+                             data = sleepstudy_l2,
+                             chains = 5,  
+                             iter = 1000,
+                             refresh = 0)
+    ```
+
+    ```{r echo=FALSE, message=FALSE, warning=FALSE}
+    fit_modelo2d %>%
+      summary(c('alpha', 'beta')) %>%                      
+      .[['summary']] %>%                
+      as.data.frame() %>% 
+      rownames_to_column("parameter")  %>% 
+      select(parameter,mean, sd, "2.5%", "97.5%", n_eff, Rhat) %>%
+      gt() %>%
+      fmt_number()
+    ```
+
+    ```{r echo=FALSE}
+    a <-plot(fit_modelo2d, pars = c("alpha"), prob = 0.95) + ggtitle("Posterior - Alpha")
+    c <- plot(fit_modelo2d, pars = c("beta"), prob = 0.95) + ggtitle("Posterior - Beta")
+
+    a+c
+    ```
 
 e.  Calcular los estimados de las medias posteriores de los parámetros $\beta$ para el modelo de parámetros heterogéneos. ¿Cómo se compara esto al estimador $\beta$ obtenido del modelo homogéneo?
 
+    ```{r}
+    posterior_betas <- rstan::extract(fit_modelo2d)$beta
+
+    # Calcula la media posterior para cada beta
+    mean_posterior_betas <- apply(posterior_betas, 2, mean) %>% tibble %>% rename("beta_het"=".") 
+
+    # sacamos la homogenea
+    posterior_betas2 <- rstan::extract(fit_modelo2a)
+    mean_homogeneous_beta <- mean(posterior_betas2$gamma[,2])
+    ```
+
+    Si promediamos las betas heterogéneas, obtenemos una beta de 10.59, que no es muy distinta del 10.52 que obtenemos como beta homogénea. sin embargo, podemos ver que dentro de cada grupo si puede haber una diferencia más notoria.
+
+    ```{r echo=FALSE}
+    mean_posterior_betas <- mean_posterior_betas %>% 
+      mutate(beta_hom=mean_homogeneous_beta)
+
+    mean_posterior_betas %>%
+      gt() %>%
+      fmt_number()
+    ```
+
 f.  Generar muestras de la distribución predictiva posterior. Comparando los datos individuales de cada sujeto las muestras predictivas, comentar sobre el ajuste del nuevo modelo.
+
+    ```{r}
+    # Extraemos las muestras predictivas posteriores
+    posterior_predictive <- rstan::extract(fit_modelo2d)$R_simulated
+
+    # Utiliza los datos originales para comparar
+    observed <- sleepstudy$Reaction
+    subject_id <- sleepstudy$Subject
+
+    n_obs <- nrow(sleepstudy)
+    n_sims <- length(posterior_predictive) / n_obs
+
+    # Reorganizar las muestras predictivas para que coincidan con las observaciones
+    # Cada observación tendrá una serie de muestras predictivas
+    # Aquí asumimos que 'posterior_predictive' es un vector con iteraciones * cadenas valores
+    predicted_matrix <- matrix(posterior_predictive, nrow = n_obs, ncol = n_sims)
+
+    # Calcular la media predictiva para cada observación
+    predicted_means <- rowMeans(predicted_matrix)
+
+    # Crear un data.frame con los datos observados y las medias predictivas
+    predictive_data <- data.frame(
+      Subject = subject_id,
+      PredictedReactionMean = predicted_means,
+      ObservedReaction = observed
+    )
+    ```
+
+    Podemos ver que, por ejemplo para el invividuo 4 en nuestro set de datos, el ajuste es mucho mejor. Se muestra la distribución posterior con los diagramas de cajas y brazos; y los puntos representan las predicciones.
+
+    ```{r echo=FALSE}
+    # Selecciona un sujeto específico para el gráfico
+    subject_number <- 4  # Cambia esto por el número de sujeto que quieres graficar
+    subject_data <- sleepstudy[sleepstudy$Subject == subject_number,]
+
+    # Crea un data.frame para las muestras predictivas del sujeto seleccionado
+    subject_predictions <- data.frame(
+      Days = rep(subject_data$Days, ncol(predicted_matrix)),
+      PredictedReaction = as.vector(predicted_matrix[subject_data$Subject == subject_number, ])
+    )
+
+    # Gráfico de distribución predictiva posterior con datos observados
+    ggplot() +
+      geom_boxplot(data = subject_predictions, aes(x = factor(Days), y = PredictedReaction), 
+                  fill = "cyan4", color = "blue4", alpha=0.5) +
+      geom_point(data = subject_data, aes(x = factor(Days), y = Reaction), color = "blue", size = 4) +
+      geom_line(data = subject_data, aes(x = factor(Days), y = Reaction, group = 1), color = "blue", size = 1) +
+      scale_x_discrete(name = "Days of sleep deprivation") +
+      scale_y_continuous(name = "Average reaction time, ms") +
+      labs(title = "Distribuciones posteriores y predicciones para ind=4") +
+      theme_bw() +
+      theme(plot.title = element_text(hjust = 0.5))
+
+    ```
 
 g.  Particionar los datos en dos subconjuntos: un conjunto de entrenamiento (sujetos 1-17) y un conjunto de prueba (sujeto 18). Ajustando ambos modelos heterogéneo y homogéneo con los datos de entrenamiento, calcular el desempeño de cada modelo para predecir el conjunto de prueba.
 
+    Debo modificar el modelo para contemplar la generación de predicciones de nuevos datos.
+
+    El homogeneo
+
+    ```{stan, output.var="mod_part_A"}
+    data { 
+      int<lower=0> N_train;               // Number of observations in the training set
+      matrix[N_train, 2] X_train;         // Design matrix for training set
+      vector[N_train] R_train;            // Reaction times for training set
+      
+      int<lower=0> N_test;                // Number of observations in the test set
+      matrix[N_test, 2] X_test;           // Design matrix for test set
+    } 
+
+    parameters { 
+      vector[2] gamma;                    // Coefficients for intercept and slope
+      real<lower=0> sigma;                // Standard deviation of the error
+    } 
+
+    model { 
+      gamma ~ normal(0, 250);             // Normal priors for the coefficients
+      R_train ~ normal(X_train * gamma, sigma);  // Linear model for training data
+    }
+
+    generated quantities {
+      vector[N_train] R_train_pred;       // Posterior predictive reaction times for training set
+      vector[N_test] R_test_pred;         // Posterior predictive reaction times for test set
+      
+      for (i in 1:N_train) {
+        R_train_pred[i] = normal_rng(X_train[i] * gamma, sigma);
+      }
+      
+      for (j in 1:N_test) {
+        R_test_pred[j] = normal_rng(X_test[j] * gamma, sigma);
+      }
+    }
+
+    ```
+
+    El heterogeneo
+
+    ```{stan, output.var="mod_part_D"}
+    data {
+      int N_train; // number of observations in the training set
+      vector[N_train] t_train; // days of sleep deprivation for training set
+      vector[N_train] R_train; // reaction times of individuals in the training set
+      int subject_train[N_train]; // subject ID for training set
+
+      int N_test; // number of observations in the test set
+      vector[N_test] t_test; // days of sleep deprivation for test set
+      int subject_test[N_test]; // subject ID for test set
+    }
+
+    parameters {
+      real alpha[18];
+      real beta[18];
+      real<lower=0> sigma;
+    }
+
+    model {
+      for (i in 1:N_train)
+        R_train[i] ~ normal(alpha[subject_train[i]] + beta[subject_train[i]] * t_train[i], sigma);
+      // Prior distributions remain the same
+      alpha ~ normal(0, 250);
+      beta ~ normal(0, 250);
+      sigma ~ normal(0, 50);
+    }
+
+    generated quantities {
+      vector[N_train] R_train_simulated; // Posterior predictive samples for training set
+      vector[N_test] R_test_simulated; // Posterior predictive samples for test set
+
+      for (i in 1:N_train) {
+        R_train_simulated[i] = normal_rng(alpha[subject_train[i]] + beta[subject_train[i]] * t_train[i], sigma);
+      }
+
+      for (j in 1:N_test) {
+        R_test_simulated[j] = normal_rng(alpha[subject_test[j]] + beta[subject_test[j]] * t_test[j], sigma);
+      }
+    }
+
+    ```
+
+    \
+    Una vez que tenemos los modelos, podemos proceder a dividir los datos y entrenar ambos modelos.
+
+    ```{r}
+    # primero dividimos
+    training_data <- sleepstudy %>% filter(Subject!=18)
+    test_data <- sleepstudy %>% filter(Subject==18)
+
+    train_list <- list(
+      N_train = nrow(training_data),
+      X_train = cbind(1, training_data$Days),
+      R_train = training_data$Reaction,
+      N_test = nrow(test_data),
+      X_test = cbind(1, test_data$Days)
+    )
+
+    train_list2 <-  list(
+      N_train = nrow(training_data),
+      t_train = training_data$Days,
+      R_train = training_data$Reaction,
+      subject_train = training_data$Subject,
+      N_test = nrow(test_data),
+      t_test = test_data$Days,
+      subject_test = test_data$Subject
+    )
+
+    # corremos el modelo A con los datos de entrenamiento
+    part_modelA_fit <- sampling(mod_part_A, 
+                             data = train_list,
+                             chains = 5,  
+                             iter = 2000,
+                             refresh = 0)
+
+    # corremos el modelo D con los datos de entrenamiento
+    part_modelD_fit <- sampling(mod_part_D,
+                             data = train_list2,
+                             chains = 5,
+                             iter = 1000,
+                             refresh = 0)
+    ```
+
+    Ahora podemos ver cómo fue el desempeño:
+
+    ```{r}
+    test_predictions_A <- rstan::extract(part_modelA_fit)$R_test_pred
+
+
+    mean_test_predictions_A <- apply(test_predictions_A, 2, mean)
+    rmse_A <- sqrt(mean((test_data$Reaction - mean_test_predictions_A)^2))
+
+
+    test_predictions_D <- rstan::extract(part_modelD_fit)$R_test_simulated
+
+
+    mean_test_predictions_D <- apply(test_predictions_D, 2, mean)
+    rmse_D <- sqrt(mean((test_data$Reaction - mean_test_predictions_D)^2))
+    ```
+
+    ```{r echo=FALSE}
+    tibble(valores_obs = test_data$Reaction,
+           pred_homogeneo=mean_test_predictions_A,
+           pred_heterogeneo=mean_test_predictions_D) %>%
+      gt() %>%
+      fmt_number()
+
+    tibble(rmse_homogeneo=rmse_A,
+           rmse_heterogeneo=rmse_D) %>%
+      gt() %>%
+      fmt_number()
+    ```
+
+    Y podemos ver que el modelo A fue mucho mejor con nuevos datos, lo que nos podría indicar un fuerte sobreajuste en el segundo modelo.
+
 h.  Alternativamente, se puede ajustar un modelo jerárquico a los datos que (esperamos) capture algunos de los mejores elementos de cada uno de los modelos previos. Ajustar esta tal modelo usando normales iniciales para $\alpha_i$ y $\beta_i$ y distribuciones iniciales para los hiperparámetros de estas distribuciones.
+
+```{stan, output.var="mod2_jerarquico"}
+data {
+  int<lower=0> N; // number of observations
+  vector[N] t; // days of sleep deprivation
+  vector[N] R; // reaction times of individuals in the study
+  int subject[N]; // subject ID
+  int<lower=0> J; // number of subjects
+}
+
+parameters {
+  vector[J] alpha; // individual-level intercepts
+  vector[J] beta; // individual-level slopes
+  real a; // population-level mean intercept
+  real b; // population-level SD of intercepts
+  real c; // population-level mean slope
+  real d; // population-level SD of slopes
+  real<lower=0> sigma; // standard deviation of residuals
+}
+
+model {
+  // Priors for population-level parameters
+  a ~ normal(100, 100);
+  b ~ cauchy(0, 5);
+  c ~ normal(10, 5);
+  d ~ cauchy(0, 1);
+  
+  // Priors for individual-level parameters
+  alpha ~ normal(a, b);
+  beta ~ normal(c, d);
+  
+  // Likelihood of the data
+  for (i in 1:N)
+    R[i] ~ normal(alpha[subject[i]] + beta[subject[i]] * t[i], sigma);
+}
+
+generated quantities {
+  vector[N] R_pred; // Posterior predictive reaction times
+  for (i in 1:N) {
+    R_pred[i] = normal_rng(alpha[subject[i]] + beta[subject[i]] * t[i], sigma);
+  }
+}
+
+```
+
+```{r}
+data_list <- list(
+  N = nrow(sleepstudy),
+  t = sleepstudy$Days,
+  R = sleepstudy$Reaction,
+  subject = sleepstudy$Subject,
+  J = length(unique(sleepstudy$Subject))
+)
+
+# Ajustamos el modelo jerárquico con los datos de entrenamiento
+fit_hierarchical <- sampling(mod2_jerarquico,
+  data = data_list,
+  chains = 4,
+  iter = 2000,
+  refresh=0
+)
+
+# Extraemos los parámetros ajustados
+fit_hierarchical_params <- rstan::extract(fit_hierarchical)
+
+```
+
+```{r echo=FALSE, fig.height=6}
+c <- plot(fit_hierarchical, pars = c("beta"), prob = 0.95) + ggtitle("Posteriores de Beta")
+
+c
+```
