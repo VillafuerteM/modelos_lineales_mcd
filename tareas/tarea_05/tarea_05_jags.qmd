@@ -14,6 +14,7 @@ library(tidyverse)
 library(coda)
 library(rjags)
 library(R2jags)
+library(patchwork)
 ```
 
 1.  Los datos en el archivo hierarchical_betaBlocker.csv muestran los resultados de 22 ensayos incluídos en un meta-análisis de datos de ensayos clínicos sobre el efecto de los beta bloqueadores en la reducción de riesgo de infarto.\
@@ -22,6 +23,7 @@ library(R2jags)
     ```{r read data}
     #data_beta_blocker <- read.csv("https://github.com/jvega68/Regresion_Avanzada/blob/master/hierarchical_betaBlocker.csv")
     data_beta_blocker <- read.csv("hierarchical_betaBlocker.csv")
+    head(data_beta_blocker)
     ```
 
     a.  Comienza suponiendo que el número de muertes en los grupos de control $(r_i^c)$ y de tratamiento $(r_i^t)$ de cada ensayo están dados por distribuciones binomiales de la forma: $r_i^c \sim \textrm{Bin}(n_i^c , p_i^c)$ y $r_i^t \sim \textrm{Bin}(n_i^t , p_i^t)$, donde $(n_i^c, n_i^t)$ son el número de individuos en los grupos de control y tratamiento respectivamente.\
@@ -33,41 +35,302 @@ library(R2jags)
     cat("model{
     # log likelihood amplitud of cutting torque
     for (i in 1:k){
-        logit(rc[i]) ~ mu[i]
-        logit(rt[i]) ~ mu[i] + delta[i]  
-        }
-        mu ~ dnorm(0,10)
-        delta ~ dnorm(0,10)
-
-      } ", file="jags_beta_blocker.txt")
+        rc[i] ~ dbin(pc, nc[i])
+        rt[i] ~ dbin(pt, nt[i])  
+    }
+    # definitions
+    logit(pc) <- mu
+    logit(pt) <- mu + delta
+    #initials
+    mu ~ dnorm(0,10)
+    delta ~ dnorm(0,10)
+    } ", file="jags_beta_blocker.txt")
       
     data_bb<- list("k" = 22, 
-                      "rc" = data_beta_blocker$rc,
-                      "rt" = data_beta_blocker$rt
-                      )
-    inits <- function(){list(mc=0.25, kc1=1.2e3)}
-    #parameters <- c("mc", "kc1", "mc_estim", "kc1_estim")
+                   "rc" = data_beta_blocker$rc,
+                   "rt" = data_beta_blocker$rt,
+                   "nc" = data_beta_blocker$nc,
+                   "nt" = data_beta_blocker$nt
+                   )
+    inits <- function(){list(mu=0, delta=0)}
     parameters <- c("mu", "delta")
 
     jags_bb <- jags(data_bb, inits, parameters, model.file="jags_beta_blocker.txt", 
                           n.iter=5000, n.chains=20, n.burnin=1000)
     ```
 
+    ```{r plot 1a mu, delta,deviance )}
+
+    n = 1:length(jags_bb$BUGSoutput$sims.list$delta)
+    df_P01a <- data.frame(n, 
+                          mu = jags_bb$BUGSoutput$sims.list$mu,
+                          conv_mu = cumsum(jags_bb$BUGSoutput$sims.list$mu)/n, 
+                          deviance = jags_bb$BUGSoutput$sims.list$deviance, 
+                          conv_deviance = cumsum(jags_bb$BUGSoutput$sims.list$deviance)/n,
+                          delta = jags_bb$BUGSoutput$sims.list$delta,
+                          conv_delta = cumsum(jags_bb$BUGSoutput$sims.list$delta)/n 
+    )
+
+    # mu
+    g1a1_mu <- ggplot(df_P01a ) +
+      geom_line(aes(x = n, y = mu, colour="trace")) +
+      geom_line(aes(x = n, y = conv_mu, colour="convergence"))
+    g1a2_mu <- ggplot(df_P01a, aes(x = mu)) + 
+      geom_histogram()
+    g1a3_mu <- ggplot(df_P01a, aes(x = mu)) + 
+      geom_density()
+
+    g1a1_mu
+    g1a2_mu+g1a3_mu
+
+    # delta
+    g1a1_delta <- ggplot(df_P01a ) +
+      geom_line(aes(x = n, y = delta, colour="trace")) +
+      geom_line(aes(x = n, y = conv_delta, colour="convergence"))
+    g1a2_delta <- ggplot(df_P01a, aes(x = delta)) + 
+      geom_histogram()
+    g1a3_delta <- ggplot(df_P01a, aes(x = delta)) + 
+      geom_density()
+
+
+    g1a1_delta
+    g1a2_delta+g1a3_delta
+
+    # deviance
+    g1a1_deviance <- ggplot(df_P01a ) +
+      geom_line(aes(x = n, y = deviance, colour="trace")) +
+      geom_line(aes(x = n, y = conv_deviance, colour="convergence"))
+    g1a2_deviance <- ggplot(df_P01a, aes(x = delta)) + 
+      geom_histogram()
+    g1a3_deviance <- ggplot(df_P01a, aes(x = deviance)) + 
+      geom_density()
+
+    g1a1_deviance
+    g1a2_deviance+g1a3_deviance
+
+
+    ```
+
     b.  Un marco alternativo es un modelo jerárquico donde se supone que hay una distribución común para todos los ensayos tal que $\delta_i \sim N(d, \sigma^2)$. Suponiendo las siguientes distribuciones iniciales de estos parámetros estimar este modelo: $d \sim N(0,10)$, $\sigma^2 \sim \textrm{Cauchy}(0, 2.5)$.
 
-    c.  Para un ensayo fuera de la muestra suponer que se sabe que $\mu_i=2.5$. Usando la estimación de $\delta$ del estudio cruzado, estimar la reducción en probabilidad para un paciente que toma beta-bloqueadores.
+```{r}
+    # model
+    cat("model{
+    # log likelihood amplitud of cutting torque
+    for (i in 1:k){
+        rc[i] ~ dbin(pc, nc[i])
+        rt[i] ~ dbin(pt, nt[i])  
+    }
+    # definitions
+    logit(pc) <- mu
+    logit(pt) <- mu + delta
+    # initials
+    d ~ dnorm(0, 1/10)
+    # Cauchy is a special form of t-student distribution with 1 degree of freedom
+    var ~ dt(0, 1/2.5, 1)
+    delta ~ dnorm(d, 1/var)
+    }", file="jags_beta_blocker1b.txt")
+      
+    data_bb<- list("k" = 22, 
+                   "rc" = data_beta_blocker$rc,
+                   "rt" = data_beta_blocker$rt,
+                   "nc" = data_beta_blocker$nc,
+                   "nt" = data_beta_blocker$nt
+                   )
+    inits <- function(){list(mu=0, delta=0)}
+    parameters <- c("mu", "delta")
 
-    d.  Estimar un modelo con sólo valores constantes $\delta$ y $\mu$ a través de los ensayos. Graficar la posterior de $\delta$, y comparar con el estimador del modelo jerárquico del estudio.
+    jags_bb <- jags(data_bb, inits, parameters, model.file="jags_beta_blocker1b.txt", n.iter=5000, n.chains=20, n.burnin=1000)
+```
+
+c.  Para un ensayo fuera de la muestra suponer que se sabe que $\mu_i=2.5$. Usando la estimación de $\delta$ del estudio cruzado, estimar la reducción en probabilidad para un paciente que toma beta-bloqueadores.
+
+```{r}
+
+```
+
+<!-- -->
+
+d.  Estimar un modelo con sólo valores constantes $\delta$ y $\mu$ a través de los ensayos. Graficar la posterior de $\delta$, y comparar con el estimador del modelo jerárquico del estudio.
 
 \newpage
 
 2.  Los siguientes datos son de un estudio (Belenky, et. al. 2003) que mide el efecto de la privación del sueño en el desempeño cognitivo. Hubo 18 sujetos elegidos de una población de internet (conductores de camiones) a los que se les restringió 3 horas de sueño durante el ensayo. En cada día del experimento se midió el tiempo de reacción visual a un estímulo. Los datos para este ejemplo están en el archivo evaluation_sleepstudy.csv, consiste de tres variables: Reaction, Days y SubjetID, que mide el tiempo de reacción de un sujeto dado en un día particular.\
     Un modelo simple que explica la variación en tiempos de reacción es un modelo de regresión lineal de la forma: $R(t) \sim N(\alpha+\beta t, \sigma^2)$, donde $R(t)$ es el tiempo de reacción en el día $t$ del experimento a través de todas las observaciones.
+
+    ```{r}
+    data_sleep <- read.csv("evaluation_sleepstudy.csv")
+    head(data_sleep)
+    ```
+
     a.  Suponiendo iniciales $N (0, 250)$ para ambos $\alpha$ y $\beta$, ajustar el modelo anterior, usando 1000 muestras por cadena, para cinco cadenas. ¿Converge el algoritmo?
+```{r}
+data_sleep_group_by_day <- data_sleep |> group_by(Days) |> summarise(mean_per_day = mean(Reaction), 
+                                                                    sd_per_day = sd(Reaction))
+data_sleep_group_by_day |> gt()
+print(data_sleep_group_by_day)
+
+data_sleep_group_by_indiv <- data_sleep |> group_by(Subject) |> summarise(mean_per_day = mean(Reaction), 
+                                                                    sd_per_day = sd(Reaction))
+data_sleep_group_by_indiv |> gt()
+print(data_sleep_group_by_indiv)
+```
+
+
+```{r jags model 2a}
+        cat("model{
+            # log likelihood amplitud of cutting torque
+            for (i in 1:k){
+              R[i] ~ dnorm(alpha+ beta*day[i], tau)
+            }
+            # definitions
+            # initials
+            alpha ~ dnorm(0, 1/250)
+            beta ~ dnorm(0,1/250)
+            tau ~ dgamma(0.1,0.1)
+        }",file="jags_sleep_1a.txt")
+
+        N <- length(data_sleep$X)
+        data_sleep_jags<- list("k" = N,
+                       "R" = data_sleep$Reaction,
+                       "day" = data_sleep$Days
+                       )
+            inits <- function(){list(alpha=0, beta=0)}
+            parameters <- c("alpha", "beta")
+
+            jags_sleep <- jags(data_sleep_jags, inits, parameters, model.file="jags_sleep_1a.txt", n.iter=1000, n.chains=5, n.burnin=500)
+
+```
+```{r plot 2a}
+n <- 1:length(jags_bb$BUGSoutput$sims.list$delta)
+df_P02a <- data.frame(n,
+                      alpha = jags_sleep$BUGSoutput$sims.list$alpha,
+                      conv_alpha = cumsum(jags_sleep$BUGSoutput$sims.list$alpha)/n, 
+                      deviance = jags_sleep$BUGSoutput$sims.list$deviance, 
+                      conv_deviance = cumsum(jags_sleep$BUGSoutput$sims.list$deviance)/n,
+                      beta = jags_sleep$BUGSoutput$sims.list$beta,
+                      conv_beta = cumsum(jags_sleep$BUGSoutput$sims.list$beta)/n 
+    )
+alpha <- mean(jags_sleep$BUGSoutput$sims.list$alpha)
+beta <- mean(jags_sleep$BUGSoutput$sims.list$beta)
+day = data_sleep$Days
+df_conv_2a <- data.frame(days = data_sleep$Days, 
+                         reac = data_sleep$Reaction, 
+                         model2a = alpha +  beta*day)
+ggplot(df_conv_2a) + 
+  geom_point(aes(x = days, y = reac, colour = "measure")) +
+  geom_line(aes(x = days, y = model2a, colour = "model"))
+
+```
+
     b.  Graficar las muestras de la distribución posterior tanto de $\alpha$ como de $\beta$, ¿Cuál es la relación entre las dos variables y por qué?
+    
+```{r}
+df_P02b <- data.frame(alpha = jags_sleep$BUGSoutput$sims.list$alpha, 
+                      beta = jags_sleep$BUGSoutput$sims.list$beta)
+ggplot(df_P02b) +
+  geom_histogram(aes(alpha, colour="hist alpha"),bins=100) +
+  geom_histogram(aes(beta, colour="hist beta"), bins=100)
+
+ggplot(df_P02b) +
+  geom_density(aes(alpha, colour="density alpha")) +
+  geom_density(aes(beta, colour="density beta"))
+```
+
+
     c.  Generar muestras de la distribución posterior predictiva. Superponiendo la serie de tiempo real para cada individuo sobre la gráfica de la distribución posterior predictiva, comentar sobre el ajuste del modelo a los datos.
-    d.  Ajustar un modelo separado $(\alpha, \beta)$ para cada individuo en el conjunto de datos. Usar independientes iniciales normales separadas $N (0, 250)$ para cada parámetro. De nuevo, usar 1000 muestras por cadena para cinco cadenas.
+
+    d.  Ajustar un modelo separado $(\alpha, \beta)$ para cada individuo en el conjunto de datos. Usar independientes iniciales normales separadas $N (0, 250)$ para cada parámetro. De nuevo, usar 1000 muestras por cadena para cinco 
+    
+```{r prep data for 2d}
+individuals <- unique(data_sleep$Subject)
+nrows <- length(individuals)
+days_of_trail <- unique(data_sleep$Days)
+ncols <- length(days_of_trail)
+data_as_matrix_2d <- matrix(data_sleep$Reaction, nrow = nrows, ncol = ncols,  byrow = TRUE )
+rownames(data_as_matrix_2d) = individuals
+colnames(data_as_matrix_2d) = days_of_trail
+
+```
+
+
+```{r}
+cat("model {
+  # Prior distributions
+  for (i in 1:k) {
+    alpha[i] ~ dnorm(0, 1/250)  # Prior for intercept for each individual
+    beta[i] ~ dnorm(0, 1/250)  # Prior for coefficient of Days for each individual
+
+    # Likelihood
+    for (j in 1:length(Days)) {
+      Reaction[i, j] ~ dnorm(mu[i, j], tau)
+      mu[i, j] <- alpha[i] + beta[i] * Days[j]
+    }
+  }
+
+  # Precision
+  tau ~ dgamma(0.1, 0.1)
+
+  # Model parameters
+  sigma <- 1 / sqrt(tau)
+}", file="jags_model2d.txt")
+```
+
+```{r prep data for jags model 2d}
+N <- length(individuals)
+data_sleep_2d_jags<- list("k" = N,
+                       "Reaction" = data_as_matrix_2d,
+                       "Days" = days_of_trail
+                       )
+inits <- function(){list(alpha=rep(0, N), beta=rep(0, N))}
+parameters <- c("alpha", "beta")
+
+jags_sleep_2d <- jags(data_sleep_2d_jags, inits, parameters, model.file="jags_model2d.txt", n.iter=1000, n.chains=5, n.burnin=500)
+
+
+```
+
     e.  Calcular los estimados de las medias posteriores de los parámetros $\beta$ para el modelo de parámetros heterogéneos. ¿Cómo se compara esto al estimador $\beta$ obtenido del modelo homogéneo?
+    
+```{r medias posteriores de betas}
+betas <- jags_sleep_2d$BUGSoutput$sims.list$beta
+df_betas <- as.data.frame(betas)
+indi <- c("i1", "i2", "i3", "i4","i5", "i6", "i7", "i8", "i9", "i10", "i11", "i12", "i13", "i14", "i15", "i16", "i17", "i18"  )
+names(df_betas) <- indi
+for(k in 1:length(indi)){
+  print(ggplot(df_betas) + 
+    geom_histogram(aes(x=df_betas[,k], colour = "hetergoneno") ) +
+      geom_histogram(aes(x=df_P02b$beta, colour="homogeno")) +
+      xlab(str(k)))
+}
+
+```
+
+
     f.  Generar muestras de la distribución predictiva posterior. Comparando los datos individuales de cada sujeto las muestras predictivas, comentar sobre el ajuste del nuevo modelo.
+    
+```{r}
+betas <- jags_sleep_2d$BUGSoutput$sims.list$beta
+alphas <- jags_sleep_2d$BUGSoutput$sims.list$alpha
+reacf <- data.frame()
+
+for(k in 1:18){
+  tmp <- NULL
+  a <- rnorm(1, mean(alphas[, k]), sd(alphas[, k]))
+  print(a)
+  b <- rnorm(1, mean(betas[, k]), sd(betas[, k]))
+  for (m in 1:9){
+    tmp[m] = a + b*days_of_trail[m]
+  }
+  
+  reacf <- rbind(reacf, tmp)
+} 
+days_id <- c("d1", "d2","d3","d4","d5","d6","d7","d8","d9")
+names(reacf) <- days_id
+
+```
+
+
     g.  Particionar los datos en dos subconjuntos: un conjunto de entrenamiento (sujetos 1-17) y un conjunto de prueba (sujeto 18). Ajustando ambos modelos heterogéneo y homogéneo con los datos de entrenamiento, calcular el desempeño de cada modelo para predecir el conjunto de prueba.
+
     h.  Alternativamente, se puede ajustar un modelo jerárquico a los datos que (esperamos) capture algunos de los mejores elementos de cada uno de los modelos previos. Ajustar tal modelo usando normales iniciales para $\alpha_i$ y $\beta_i$ y distribuciones iniciales para los hiperparámetros de estas distribuciones.
