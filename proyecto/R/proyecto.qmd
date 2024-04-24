@@ -15,4 +15,4 @@ library(tidyverse)
 
 # Análisis bayesiana de de partidos de futbol
 
-Se utilizará la inferencia bayesiana para predecir las victorias en los partidos de fútbol. Basado en los resultados y partidos de temporadas pasados, se quiere modelar / predecir los resultados de partidos.
+El fútbol es el deporte más grande y seguido del mundo y, según la FIFA, cuenta con unos 5.000 millones de seguidores en todo el mundo. En este proyecto se utilizará la inferencia bayesiana para predecir las victorias en los partidos de fútbol. Basado en los resultados y partidos de temporadas pasados, se quiere modelar / predecir los resultados de partidos.
