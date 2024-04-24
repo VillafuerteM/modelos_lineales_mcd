@@ -1,0 +1,18 @@
+---
+title: "Proyecto MLG"
+format: pdf
+editor: visual
+authors: 
+  - "Blanca Garcia - 118886"
+  - "Yuneri Perez - 199813"
+  - "Thomas Rudolf - 169293"
+  - "Mariano Villafuerte - 156057"
+---
+
+```{r librerias, include=FALSE}
+library(tidyverse)
+```
+
+# Análisis bayesiana de de partidos de futbol
+
+Se utilizará la inferencia bayesiana para predecir las victorias en los partidos de fútbol. Basado en los resultados y partidos de temporadas pasados, se quiere modelar / predecir los resultados de partidos.
