@@ -1,5 +1,6 @@
 ---
-title: "Proyecto MLG"
+title: "Análisis bayesiano de de partidos de fútbol"
+subtitle: "Proyecto MLG"
 format: pdf
 editor: visual
 authors: 
@@ -7,12 +8,52 @@ authors:
   - "Yuneri Perez - 199813"
   - "Thomas Rudolf - 169293"
   - "Mariano Villafuerte - 156057"
+toc: true
+toc-title: "Índice"
 ---
 
 ```{r librerias, include=FALSE}
 library(tidyverse)
 ```
 
-# Análisis bayesiana de de partidos de futbol
+\newpage
+
+# Abstract
+
+\newpage
+
+# Introducción
 
 El fútbol es el deporte más grande y seguido del mundo y, según la FIFA, cuenta con unos 5.000 millones de seguidores en todo el mundo. En este proyecto se utilizará la inferencia bayesiana para predecir las victorias en los partidos de fútbol. Basado en los resultados y partidos de temporadas pasados, se quiere modelar / predecir los resultados de partidos.
+
+\newpage
+
+# Datos
+
+Una descripción de los datos que se usan para el modelo, ya sean datos observados o simulados y el contexto en el que se utilizan.
+
+\newpage
+
+# Métodos
+
+Los métodos que se utilizarán para resolver el problema. Los vistos en clase y si se incluye alguno que no se revisó, mencionar referencias y una descripción muy general del método.
+
+\newpage
+
+# Resultados
+
+La aplicación de los métodos a los datos. Los resultados deben ser presentados en forma fácil de entender, a través de gráficas, tablas de resumen de los resultados. En todos los casos, las gráficas y tablas tienen que ser relevantes para la comunicación de los resultados, no tienen que ser redundantes, y tienen que ser correctas.
+
+\newpage
+
+# Conclusiones
+
+Un resumen de la conclusión del estudio, en donde se especifíque cómo se resolvió el problema propuesto, así como futuras vías de ampliación del estudio. También mencionar las limitaciones que se encontraron, y porqué no se pudieron atacar algunos aspectos originales del problema.
+
+\newpage
+
+# Fuentes
+
+\newpage
+
+# Anexos
