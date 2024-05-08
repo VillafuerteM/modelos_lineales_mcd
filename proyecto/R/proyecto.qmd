@@ -14,6 +14,7 @@ toc-title: "Índice"
 
 ```{r librerias, include=FALSE}
 library(tidyverse)
+library(gt)
 ```
 
 \newpage
@@ -30,7 +31,21 @@ El fútbol es el deporte más grande y seguido del mundo y, según la FIFA, cuen
 
 # Datos
 
-Una descripción de los datos que se usan para el modelo, ya sean datos observados o simulados y el contexto en el que se utilizan.
+*Una descripción de los datos que se usan para el modelo, ya sean datos observados o simulados y el contexto en el que se utilizan.*
+
+En la pimera fase de proyecto se va a usar datos de la Premier League. Son los resultados de los ultimos temporadas de 2021-2022 hasta 2023-2024 (hasta 17 de marzo 2014), obtenidos de la pagina <https://www.football-data.co.uk/englandm.php>. En la segunda parte del proyecto, se va aplicar el modelo a datos de la liga mexicana LigaMX, obtenido del la pagina <https://www.livefutbol.com>.
+
+La siguiente tabla es un ejemplo de los datos de la Premier League. Contiene datos de los equipos de casa (HomeTeam), de vistita (AwayTeam), el numero de goles que obtuvo cada equipo (FTHG Full-Time home goals, FTAG Full-time away goals, FTR Full time results). En la pagina se encuentra tambien datos addicionales que no se requiere para este proyecto.
+
+```{r read data PL}
+dataPL_complete <- read.csv("../data/PL/2020-2021.csv")
+dataPL <- dataPL_complete |> select(Div, Date, Time,
+                                    HomeTeam, AwayTeam,
+                                    FTHG, FTAG, FTR )
+
+dataPL |> gt()
+
+```
 
 \newpage
 
