@@ -11,6 +11,7 @@ authors:
 toc: true
 toc-title: "Índice"
 ---
+
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = "../Proyecto MLG/data")
 ```
@@ -44,24 +45,39 @@ El fútbol es el deporte más grande y seguido del mundo y, según la FIFA, cuen
 
 *Una descripción de los datos que se usan para el modelo, ya sean datos observados o simulados y el contexto en el que se utilizan.*
 
-En la pimera fase de proyecto se va a usar datos de la Premier League. Son los resultados de los ultimos temporadas de 2021-2022 hasta 2023-2024 (hasta 17 de marzo 2014), obtenidos de la pagina <https://www.football-data.co.uk/englandm.php>. En la segunda parte del proyecto, se va aplicar el modelo a datos de la liga mexicana LigaMX, obtenido del la pagina <https://www.livefutbol.com>.
+En la pimera fase de proyecto se va a usar datos de la Premier League. Son los resultados de los ultimos temporadas de 2021-2022 hasta 2023-2024 (hasta 17 de marzo 2014), obtenidos de la pagina <https://www.football-data.co.uk/englandm.php>.
 
-La siguiente tabla es un ejemplo de los datos de la Premier League. 
+La siguiente tabla es un ejemplo de los datos de la Premier League.
+
 ```{r datos, warning=FALSE}
 E0 <- read_csv("E0.csv")
+E0<- E0 |>  mutate(Season = "2023-2024")
 E01 <- read_csv("E0 (1).csv", show_col_types = FALSE)
+E01<- E01 |>  mutate(Season = "2022-2023")
 E02 <- read_csv("E0 (2).csv", show_col_types = FALSE)
+E02<- E02 |>  mutate(Season = "2021-2022")
 E03 <- read_csv("E0 (3).csv", show_col_types = FALSE)
+E03<- E03 |>  mutate(Season = "2020-2021")
 E04 <- read_csv("E0 (4).csv", show_col_types = FALSE)
+E04<- E04 |>  mutate(Season = "2019-2020")
 E05 <- read_csv("E0 (5).csv", show_col_types = FALSE)
+E05<- E05 |>  mutate(Season = "2018-2019")
 E06 <- read_csv("E0 (6).csv", show_col_types = FALSE)
+E06<- E06 |>  mutate(Season = "2017-2018")
 E07 <- read_csv("E0 (7).csv", show_col_types = FALSE)
+E07<- E07 |>  mutate(Season = "2016-2017")
 E08 <- read_csv("E0 (8).csv", show_col_types = FALSE)
+E08<- E08 |>  mutate(Season = "2015-2016")
 E09 <- read_csv("E0 (9).csv", show_col_types = FALSE)
+E09<- E09 |>  mutate(Season = "2014-2015")
 E010 <- read_csv("E0 (10).csv", show_col_types = FALSE)
+E010<- E010 |>  mutate(Season = "2013-2014")
 E011 <- read_csv("E0 (11).csv", show_col_types = FALSE)
+E011<- E011 |>  mutate(Season = "2012-2013")
 E012 <- read_csv("E0 (12).csv", show_col_types = FALSE)
+E012<- E012 |>  mutate(Season = "2011-2012")
 E013 <- read_csv("E0 (13).csv", show_col_types = FALSE)
+E013<- E013 |>  mutate(Season = "2010-2011")
 
 # Unir todos los dataframes
 dataPL_complete <- bind_rows(E0, E01, E02, E03, E04, E05, E06, E07, E08, E09, E010, E011, E012, E013)
@@ -69,40 +85,37 @@ dataPL_complete <- bind_rows(E0, E01, E02, E03, E04, E05, E06, E07, E08, E09, E0
 # Verificar el resultado
 head(dataPL_complete)
 ```
+
 La descripción de las variables de los datos de la Premier League son:
 
-- Div: Division
-- Season: Season
-- Date: Match Date (dd/mm/yyyy)
-- Time: Match Time
-- HomeTeam: Home Team
-- AwayTeam: Away Team
-- FTHG: Full Time Home Team Goals
-- FTAG: Full Time Away Team Goals
-- FTR: Full Time Result (H=Home Win, D=Draw, A=Away Win)
-- HTHG: Half Time Home Team Goals
-- HTAG: Half Time Away Team Goals
-- HTR: Half Time Result (H=Home Win, D=Draw, A=Away Win)
-- HS: Home Team Shots
-- AS: Away Team Shots
-- HST: Home Team Shots on Target
-- AST: Away Team Shots on Target
-- HF: Home Team Fouls Committed
-- AF: Away Team Fouls Committed
-- HC: Home Team Corners
-- AC: Away Team Corners
-- HY: Home Team Yellow Cards
-- AY: Away Team Yellow Cards
-- HR: Home Team Red Cards
-- AR: Away Team Red Cards
+-   Div: Division
+-   Season: Season
+-   Date: Match Date (dd/mm/yyyy)
+-   Time: Match Time
+-   HomeTeam: Home Team
+-   AwayTeam: Away Team
+-   FTHG: Full Time Home Team Goals
+-   FTAG: Full Time Away Team Goals
+-   FTR: Full Time Result (H=Home Win, D=Draw, A=Away Win)
+-   HTHG: Half Time Home Team Goals
+-   HTAG: Half Time Away Team Goals
+-   HTR: Half Time Result (H=Home Win, D=Draw, A=Away Win)
+-   HS: Home Team Shots
+-   AS: Away Team Shots
+-   HST: Home Team Shots on Target
+-   AST: Away Team Shots on Target
+-   HF: Home Team Fouls Committed
+-   AF: Away Team Fouls Committed
+-   HC: Home Team Corners
+-   AC: Away Team Corners
+-   HY: Home Team Yellow Cards
+-   AY: Away Team Yellow Cards
+-   HR: Home Team Red Cards
+-   AR: Away Team Red Cards
 
-El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de:
-a) calcular las probabilidades del posible resultado de goles en los partidos futuros y 
-b) producir una clasificación confiable de los equipos.
-Lo antreior a partir del desarrollo de un **modelo jerárquico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson
+El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de: a) calcular las probabilidades del posible resultado de goles en los partidos futuros y b) producir una clasificación confiable de los equipos. Lo antreior a partir del desarrollo de un **modelo jerárquico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson
 
-Traducción realizada con la versión gratuita del traductor DeepL.com
-Para nuestro análisis Baye
+Traducción realizada con la versión gratuita del traductor DeepL.com Para nuestro análisis Baye
 
 ```{r preprocessing}
 dataPL <- dataPL_complete |>
@@ -149,7 +162,6 @@ Los métodos que se utilizarán para resolver el problema. Los vistos en clase y
 laliga$MatchResult <- sign(laliga$HomeGoals - laliga$AwayGoals)
 
 ```
-
 
 \newpage
 
