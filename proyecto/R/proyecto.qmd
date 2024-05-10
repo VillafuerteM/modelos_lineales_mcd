@@ -119,9 +119,9 @@ Traducción realizada con la versión gratuita del traductor DeepL.com Para nues
 
 ```{r preprocessing}
 dataPL <- dataPL_complete |>
-  select(Div, Season, Date, Time, HomeTeam, AwayTeam, FTHG, FTAG, FTR) |>
-  mutate(Date = as.Date(Date, format = "%d/%m/%Y"),
-         YearMatch = format(Date, "%Y"),
+  select(Div, Season, Date, HomeTeam, AwayTeam, FTHG, FTAG, FTR) |>
+  mutate(Date = as.Date(Date, format = "%d/%m/%y"),
+         YearMatch = format(Date, "%y"),
          MonthMatch = format(Date, "%m"),
          DayMatch = format(Date, "%d")) |>
   dplyr::rename(HomeGoals = FTHG, 
@@ -130,7 +130,9 @@ dataPL <- dataPL_complete |>
 
 # -1 = Away win, 0 = Draw, 1 = Home win
 dataPL$MatchResult <- sign(dataPL$HomeGoals - dataPL$AwayGoals)
+```
 
+```{r}
 # Creating a data frame d with only the complete match results
 d <- na.omit(dataPL)
 teams <- unique(c(d$HomeTeam, d$AwayTeam))
