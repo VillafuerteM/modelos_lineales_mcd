@@ -11,10 +11,21 @@ authors:
 toc: true
 toc-title: "Índice"
 ---
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "../Proyecto MLG/data")
+```
 
 ```{r librerias, include=FALSE}
 library(tidyverse)
 library(gt)
+library(dplyr)
+library(readr)
+library(R2jags)
+library(coda)
+library(mcmcplots)
+library(stringr)
+library(plyr)
+library(xtable)
 ```
 
 \newpage
@@ -35,16 +46,96 @@ El fútbol es el deporte más grande y seguido del mundo y, según la FIFA, cuen
 
 En la pimera fase de proyecto se va a usar datos de la Premier League. Son los resultados de los ultimos temporadas de 2021-2022 hasta 2023-2024 (hasta 17 de marzo 2014), obtenidos de la pagina <https://www.football-data.co.uk/englandm.php>. En la segunda parte del proyecto, se va aplicar el modelo a datos de la liga mexicana LigaMX, obtenido del la pagina <https://www.livefutbol.com>.
 
-La siguiente tabla es un ejemplo de los datos de la Premier League. Contiene datos de los equipos de casa (HomeTeam), de vistita (AwayTeam), el numero de goles que obtuvo cada equipo (FTHG Full-Time home goals, FTAG Full-time away goals, FTR Full time results). En la pagina se encuentra también datos adicionales que no se requiere para este proyecto.
+La siguiente tabla es un ejemplo de los datos de la Premier League. 
+```{r datos, warning=FALSE}
+E0 <- read_csv("E0.csv")
+E01 <- read_csv("E0 (1).csv", show_col_types = FALSE)
+E02 <- read_csv("E0 (2).csv", show_col_types = FALSE)
+E03 <- read_csv("E0 (3).csv", show_col_types = FALSE)
+E04 <- read_csv("E0 (4).csv", show_col_types = FALSE)
+E05 <- read_csv("E0 (5).csv", show_col_types = FALSE)
+E06 <- read_csv("E0 (6).csv", show_col_types = FALSE)
+E07 <- read_csv("E0 (7).csv", show_col_types = FALSE)
+E08 <- read_csv("E0 (8).csv", show_col_types = FALSE)
+E09 <- read_csv("E0 (9).csv", show_col_types = FALSE)
+E010 <- read_csv("E0 (10).csv", show_col_types = FALSE)
+E011 <- read_csv("E0 (11).csv", show_col_types = FALSE)
+E012 <- read_csv("E0 (12).csv", show_col_types = FALSE)
+E013 <- read_csv("E0 (13).csv", show_col_types = FALSE)
 
-```{r read data PL}
-dataPL_complete <- read.csv("../data/PL/2020-2021.csv")
-dataPL <- dataPL_complete |> select(Div, Date, Time,
-                                    HomeTeam, AwayTeam,
-                                    FTHG, FTAG, FTR )
+# Unir todos los dataframes
+dataPL_complete <- bind_rows(E0, E01, E02, E03, E04, E05, E06, E07, E08, E09, E010, E011, E012, E013)
 
-dataPL |> gt()
+# Verificar el resultado
+head(dataPL_complete)
+```
+La descripción de las variables de los datos de la Premier League son:
 
+- Div: Division
+- Season: Season
+- Date: Match Date (dd/mm/yyyy)
+- Time: Match Time
+- HomeTeam: Home Team
+- AwayTeam: Away Team
+- FTHG: Full Time Home Team Goals
+- FTAG: Full Time Away Team Goals
+- FTR: Full Time Result (H=Home Win, D=Draw, A=Away Win)
+- HTHG: Half Time Home Team Goals
+- HTAG: Half Time Away Team Goals
+- HTR: Half Time Result (H=Home Win, D=Draw, A=Away Win)
+- HS: Home Team Shots
+- AS: Away Team Shots
+- HST: Home Team Shots on Target
+- AST: Away Team Shots on Target
+- HF: Home Team Fouls Committed
+- AF: Away Team Fouls Committed
+- HC: Home Team Corners
+- AC: Away Team Corners
+- HY: Home Team Yellow Cards
+- AY: Away Team Yellow Cards
+- HR: Home Team Red Cards
+- AR: Away Team Red Cards
+
+El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de:
+a) calcular las probabilidades del posible resultado de goles en los partidos futuros y 
+b) producir una clasificación confiable de los equipos.
+Lo antreior a partir del desarrollo de un **modelo jerárquico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson
+
+Traducción realizada con la versión gratuita del traductor DeepL.com
+Para nuestro análisis Baye
+
+```{r preprocessing}
+dataPL <- dataPL_complete |>
+  select(Div, Season, Date, Time, HomeTeam, AwayTeam, FTHG, FTAG, FTR) |>
+  mutate(Date = as.Date(Date, format = "%d/%m/%Y"),
+         YearMatch = format(Date, "%Y"),
+         MonthMatch = format(Date, "%m"),
+         DayMatch = format(Date, "%d")) |>
+  dplyr::rename(HomeGoals = FTHG, 
+                AwayGoals = FTAG, 
+                Result = FTR)
+
+# -1 = Away win, 0 = Draw, 1 = Home win
+dataPL$MatchResult <- sign(dataPL$HomeGoals - dataPL$AwayGoals)
+
+# Creating a data frame d with only the complete match results
+d <- na.omit(dataPL)
+teams <- unique(c(d$HomeTeam, d$AwayTeam))
+seasons <- unique(d$Season)
+
+
+# A list for JAGS with the data from d where the strings are coded as
+# integers
+data_list <- list(HomeGoals = d$HomeGoals, AwayGoals = d$AwayGoals,
+HomeTeam = as.numeric(factor(d$HomeTeam, levels = teams)),
+AwayTeam = as.numeric(factor(d$AwayTeam, levels = teams)),
+Season = as.numeric(factor(d$Season, levels = seasons)), n_teams = length(teams),
+n_games = nrow(d), n_seasons = length(seasons))
+
+# Convenience function to generate the type of column names Jags outputs.
+col_name <- function(name, ...) {
+paste0(name, "[", paste(..., sep = ","), "]")
+}
 ```
 
 \newpage
@@ -52,6 +143,13 @@ dataPL |> gt()
 # Métodos
 
 Los métodos que se utilizarán para resolver el problema. Los vistos en clase y si se incluye alguno que no se revisó, mencionar referencias y una descripción muy general del método.
+
+```{r}
+# -1 = Away win, 0 = Draw, 1 = Home win
+laliga$MatchResult <- sign(laliga$HomeGoals - laliga$AwayGoals)
+
+```
+
 
 \newpage
 
