@@ -27,6 +27,10 @@ library(mcmcplots)
 library(stringr)
 library(plyr)
 library(xtable)
+library(ggplot2)
+library(gridExtra)
+library(patchwork)
+theme_light()
 ```
 
 \newpage
@@ -113,9 +117,7 @@ La descripción de las variables de los datos de la Premier League son:
 -   HR: Home Team Red Cards
 -   AR: Away Team Red Cards
 
-El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de: a) calcular las probabilidades del posible resultado de goles en los partidos futuros y b) producir una clasificación confiable de los equipos. Lo antreior a partir del desarrollo de un **modelo jerárquico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson
-
-Traducción realizada con la versión gratuita del traductor DeepL.com Para nuestro análisis Baye
+El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de: a) calcular las probabilidades del posible resultado de goles en los partidos futuros y b) producir una clasificación confiable de los equipos. Lo antreior a partir del desarrollo de un **modelo jerárquico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson:
 
 ```{r preprocessing}
 dataPL <- dataPL_complete |>
@@ -130,27 +132,10 @@ dataPL <- dataPL_complete |>
 
 # -1 = Away win, 0 = Draw, 1 = Home win
 dataPL$MatchResult <- sign(dataPL$HomeGoals - dataPL$AwayGoals)
-```
-
-```{r}
 # Creating a data frame d with only the complete match results
 d <- na.omit(dataPL)
 teams <- unique(c(d$HomeTeam, d$AwayTeam))
 seasons <- unique(d$Season)
-
-
-# A list for JAGS with the data from d where the strings are coded as
-# integers
-data_list <- list(HomeGoals = d$HomeGoals, AwayGoals = d$AwayGoals,
-HomeTeam = as.numeric(factor(d$HomeTeam, levels = teams)),
-AwayTeam = as.numeric(factor(d$AwayTeam, levels = teams)),
-Season = as.numeric(factor(d$Season, levels = seasons)), n_teams = length(teams),
-n_games = nrow(d), n_seasons = length(seasons))
-
-# Convenience function to generate the type of column names Jags outputs.
-col_name <- function(name, ...) {
-paste0(name, "[", paste(..., sep = ","), "]")
-}
 ```
 
 \newpage
@@ -158,14 +143,201 @@ paste0(name, "[", paste(..., sep = ","), "]")
 # Métodos
 
 Los métodos que se utilizarán para resolver el problema. Los vistos en clase y si se incluye alguno que no se revisó, mencionar referencias y una descripción muy general del método.
+## Modelando resultados de partidos de fútbol: Iteración 1
+¿Cómo se distribuye el número de goles de cada equipo en un partido de fútbol? 
+Para responder la preguta anterior, supondremos que todos los partidos de fútbol tienen aproximadamente la misma duración, que ambos equipos tienen suficientes oportunidades de marcar un gol y que cada equipo tiene la misma probabilidad de marcar un gol en cada oportunidad de gol. Dadas estas suposiciones, la distribución del número de goles de cada equipo debería estar bien representada por una distribución de `Poisson`. La comparación entre la distribución real del número de goles marcados y una distribución de `Poisson` con el mismo número medio de goles marcados corroborá esta definición.
 
-```{r}
-# -1 = Away win, 0 = Draw, 1 = Home win
-laliga$MatchResult <- sign(laliga$HomeGoals - laliga$AwayGoals)
+```{r warning=FALSE}
+# Combinar los goles en casa y fuera en un solo vector y crear un dataframe
+goals_data <- data.frame(Goals = c(d$AwayGoals, d$HomeGoals))
+
+# Histograma de los goles reales
+p1 <- ggplot(goals_data, aes(x = Goals)) +
+  geom_histogram(breaks = -1:9 + 0.5, fill = "purple", alpha = 0.5) +
+  scale_x_continuous(limits = c(-0.5, 8)) +
+  ggtitle("Dist. del número de goles marcados\npor un equipo en un partido") +
+  theme_light()
+
+# Calcular la media de goles
+mean_goals <- mean(goals_data$Goals)
+
+# Histograma basado en la distribución de Poisson
+p2 <- ggplot(data.frame(Goals = rpois(9999, mean_goals)), aes(x = Goals)) +
+  geom_histogram(breaks = -1:9 + 0.5, fill = "blue", alpha = 0.5) +
+  scale_x_continuous(limits = c(-0.5, 8)) +
+  ggtitle("Dist. aleatoria de Poisson con misma\nmedia que la distribución anterior") +
+  theme_light()
+
+p1+p2
 
 ```
-
 \newpage
+Es importante destacar que no todos los equipos son igual de buenos, por lo que para esto se supondrá que todos los equipos tienen una variable de habilidad latente y que la habilidad de un equipo menos la habilidad del equipo contrario define el resultado previsto de un partido. Como se supone que el número de goles tiene una distribución Poisson, es natural que las habilidades de los equipos estén en la escala logarítmica de la media de dicha distribución. La distribución del número de goles del equipo $i$ frente al equipo $j$ es la siguiente:
+$$Goals \sim Poisson(\lambda)$$
+$$log(\lambda) = baseline + skill_i − skill_j$$
+donde la línea de base (baseline) es el promedio logarítmico del número de goles cuando ambos equipos son igual de buenos. El resultado de goles de un partido entre el equipo local $i$ y el equipo visitante $j$ se modela como:
+$$HomeGoals_{i,j} \sim Poison(\lambda_{home,i,j})$$
+$$AwayGoals_{i,j} \sim Poison(\lambda_{away,i,j})$$
+$$log(\lambda_{home,i,j}) = baseline + skill_i − skill_j$$
+$$log(\lambda_{away,i,j}) = baseline + skill_j − skill_i$$
+Para contar con un modelo bayesiano agregaremos algunas distribuciones a priori sobre la línea de base (baseline) y la habilidad (skill) de todos los $n$ equipos:
+$$baseline \sim Normal(0, 4^2)$$
+$$skill_{1...n} \sim Normal(\mu_{teams}, \sigma^2_{teams})$$
+$$\mu_{teams} \sim Normal(0, 4^2)$$
+$$\sigma_{teams} \sim U(0, 3)$$
+Cabe destacar que con base al conocimiento que tenemos de fútbol se establecieron estas distribuciones a priori. Por ejemplo, el valor a priori de la línea de base tiene una desviación estándar de 4, pero como está en la escala logarítmica del número medio de goles, corresponde a una desviación estándar de la media 0 que cubre el intervalo de [0.02, 54.6] goles. 
+Convertir esto en un modelo JAGS requiere algunos ajustes menores. El modelo tiene que pasar por todos los resultados de los partidos, lo que añade algunos ciclos `for`. JAGS parametriza la distribución normal con precisión (el recíproco de la varianza) en lugar de con varianza, por lo que hay que convertir las hiper prioris. Por último, tenemos que "anclar" la habilidad de un equipo a una constante, de lo contrario la habilidad media puede desviarse libremente. Estos ajustes dan como resultado la siguiente descripción del modelo:
+
+```{stan, output.var="model1"}
+data {
+  int<lower=1> n_games;
+  int<lower=1> n_teams;
+  int<lower=1, upper=n_teams> HomeTeam[n_games];
+  int<lower=1, upper=n_teams> AwayTeam[n_games];
+  int<lower=0> HomeGoals[n_games];
+  int<lower=0> AwayGoals[n_games];
+}
+
+parameters {
+  real baseline;
+  real<lower=0, upper=3> group_sigma;
+  vector[n_teams-1] skill_raw; // Skills for teams 2 through n_teams, team 1 is anchored at 0
+  real group_skill; // Hyperparameter for the skills
+}
+
+transformed parameters {
+  vector[n_teams] skill;
+  real<lower=0> group_tau;
+  matrix[n_teams, n_teams] lambda_home;
+  matrix[n_teams, n_teams] lambda_away;
+
+  // Set first skill to zero to anchor the model
+  skill[1] = 0;
+  for (j in 2:n_teams) {
+    skill[j] = group_skill + skill_raw[j - 1];
+  }
+
+  group_tau = 1 / square(group_sigma);
+
+  // Calculate lambda matrices
+  for (home_i in 1:n_teams) {
+    for (away_i in 1:n_teams) {
+      lambda_home[home_i, away_i] = exp(baseline + skill[home_i] - skill[away_i]);
+      lambda_away[home_i, away_i] = exp(baseline + skill[away_i] - skill[home_i]);
+    }
+  }
+}
+
+model {
+  skill_raw ~ normal(0, sqrt(1 / group_tau));
+  group_skill ~ normal(0, 0.25); // Hyperprior on the average skill level
+  baseline ~ normal(0, 0.25); // Prior on the game baseline
+  group_sigma ~ uniform(0, 3); // Prior on the standard deviation of skills
+
+  // Likelihood of observed goals
+  for (i in 1:n_games) {
+    HomeGoals[i] ~ poisson(lambda_home[HomeTeam[i], AwayTeam[i]]);
+    AwayGoals[i] ~ poisson(lambda_away[HomeTeam[i], AwayTeam[i]]);
+  }
+}
+```
+
+```{r fit_model1, warning=FALSE, message=FALSE}
+data_mod1 <- list(
+  n_games = nrow(d),
+  n_teams = length(unique(c(d$HomeTeam, d$AwayTeam))),
+  HomeTeam = as.integer(factor(d$HomeTeam, levels = unique(c(d$HomeTeam, d$AwayTeam)))),
+  AwayTeam = as.integer(factor(d$AwayTeam, levels = unique(c(d$HomeTeam, d$AwayTeam)))),
+  HomeGoals = d$HomeGoals,
+  AwayGoals = d$AwayGoals
+)
+
+model1_fit <- rstan::sampling(model1, 
+                               data = data_mod1,
+                               refresh = 0)
+```
+
+```{r tbl_model1, echo=FALSE}
+model1_fit %>%
+  summary() %>%                      
+  .[['summary']] %>%                
+  as.data.frame() %>% 
+  rownames_to_column("parameter")  %>% 
+  select(parameter, mean, sd, "2.5%", "97.5%") %>%
+  gt() %>%
+  fmt_number()
+```
+Utilizando las muestras MCMC generadas, ahora puedo observar los valores de habilidad creíbles de cualquier equipo. Veamos el trazado y la distribución de los parámetros de habilidad del `Chelsea` y el `Man United`.
+```{r graphs_model1_Chelsea, warning=FALSE}
+model1_trace_ch <- mcmc_trace(
+  model1_fit,
+  pars = c("skill[9]"),
+  n_warmup = 1000
+) + ggtitle("Trace group_skill Chelsea")
+
+model1_dens_ch <- mcmc_areas(
+  model1_fit,
+  pars = c("skill[9]"),
+  prob = 0.95
+) + ggtitle("Density group_skill posterior Chelsea")
+
+model1_trace_ch / model1_dens_ch
+```
+
+
+```{r graphs_model1_ManUnited, warning=FALSE}
+model1_trace_mu <- mcmc_trace(
+  model1_fit,
+  pars = c("skill[10]"),
+  n_warmup = 1000
+) + ggtitle("Trace group_skill Man United")
+
+model1_dens_mu <- mcmc_areas(
+  model1_fit,
+  pars = c("skill[10]"),
+  prob = 0.95
+) + ggtitle("Density group_skill posterior Man United")
+
+model1_trace_mu / model1_dens_mu
+```
+\newpage
+Parece que el `Chelsea` y el `Man United` tienen una habilidad similar, siendo el Chelsea ligeramente mejor. Utilizando las muestras MCMC no sólo es posible observar la distribución de los valores de los parámetros, sino que también es sencillo simular partidos entre equipos y observar la distribución creíble del número de goles marcados y la probabilidad de victoria del equipo local, victoria del equipo visitante o empate. Las siguientes funciones simulan partidos con un equipo como local y otro como visitante y representan el resultado previsto junto con los resultados reales de cualquier partido del conjunto de datos de la Premier League.
+```{r}
+# Plots histograms over home_goals, away_goals, the difference in goals
+# and a barplot over match results.
+plot_goals <- function(home_goals, away_goals) {
+  n_matches <- length(home_goals)
+  goal_diff <- home_goals - away_goals
+  match_result <- ifelse(goal_diff < 0, "away_win", ifelse(goal_diff > 0,
+  "home_win", "equal"))
+  hist(home_goals, xlim = c(-0.5, 10), breaks = (0:100) - 0.5)
+  hist(away_goals, xlim = c(-0.5, 10), breaks = (0:100) - 0.5)
+  hist(goal_diff, xlim = c(-6, 6), breaks = (-100:100) - 0.5)
+  barplot(table(match_result)/n_matches, ylim = c(0, 1))
+}
+
+plot_pred_comp1 <- function(home_team, away_team, ms) {
+  # Simulates and plots game goals scores using the MCMC samples from the model1
+  par(mfrow = c(2, 4))
+  baseline <- ms[, "baseline"]
+  home_skill <- ms[, col_name("skill", which(teams == home_team))]
+  away_skill <- ms[, col_name("skill", which(teams == away_team))]
+  home_goals <- rpois(nrow(ms), exp(baseline + home_skill - away_skill))
+  away_goals <- rpois(nrow(ms), exp(baseline + away_skill - home_skill))
+  plot_goals(home_goals, away_goals)
+  # Plots the actual distribution of goals between the two teams
+  home_goals <- d$HomeGoals[d$HomeTeam == home_team & d$AwayTeam == away_team]
+  away_goals <- d$AwayGoals[d$HomeTeam == home_team & d$AwayTeam == away_team]
+  plot_goals(home_goals, away_goals)
+  }
+```
+
+
+```{r}
+plot_pred_comp1("FC Valencia", "FC Sevilla", ms1)
+```
+
+
 
 # Resultados
 
