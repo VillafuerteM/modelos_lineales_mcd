@@ -303,38 +303,60 @@ model1_trace_mu / model1_dens_mu
 \newpage
 Parece que el `Chelsea` y el `Man United` tienen una habilidad similar, siendo el Chelsea ligeramente mejor. Utilizando las muestras MCMC no sólo es posible observar la distribución de los valores de los parámetros, sino que también es sencillo simular partidos entre equipos y observar la distribución creíble del número de goles marcados y la probabilidad de victoria del equipo local, victoria del equipo visitante o empate. Las siguientes funciones simulan partidos con un equipo como local y otro como visitante y representan el resultado previsto junto con los resultados reales de cualquier partido del conjunto de datos de la Premier League.
 ```{r}
-# Plots histograms over home_goals, away_goals, the difference in goals
-# and a barplot over match results.
 plot_goals <- function(home_goals, away_goals) {
   n_matches <- length(home_goals)
   goal_diff <- home_goals - away_goals
-  match_result <- ifelse(goal_diff < 0, "away_win", ifelse(goal_diff > 0,
-  "home_win", "equal"))
-  hist(home_goals, xlim = c(-0.5, 10), breaks = (0:100) - 0.5)
-  hist(away_goals, xlim = c(-0.5, 10), breaks = (0:100) - 0.5)
-  hist(goal_diff, xlim = c(-6, 6), breaks = (-100:100) - 0.5)
-  barplot(table(match_result)/n_matches, ylim = c(0, 1))
+  match_result <- ifelse(goal_diff < 0, "away_win", ifelse(goal_diff > 0, "home_win", "equal"))
+  
+  par(mfrow = c(2, 2))  # Ajustamos el layout para cuatro gráficos
+  
+  max_goals <- max(home_goals, away_goals)
+  min_diff <- min(goal_diff)
+  max_diff <- max(goal_diff)
+
+  hist(home_goals, main = "Home Goals", xlim = c(-0.5, max_goals + 0.5), 
+       breaks = seq(-0.5, max_goals + 0.5, by = 1), col = "steelblue3")
+  
+  hist(away_goals, main = "Away Goals", xlim = c(-0.5, max_goals + 0.5), 
+       breaks = seq(-0.5, max_goals + 0.5, by = 1), col = "maroon3")
+  hist(goal_diff, main = "Goal Difference", xlim = c(min_diff - 0.5, max_diff + 0.5),
+       breaks = seq(min_diff - 0.5, max_diff + 0.5, by = 1), col = "aquamarine2")
+  
+  barplot(table(match_result) / n_matches, main = "Match Results", ylim = c(0, 1), col = "purple2")
 }
 
-plot_pred_comp1 <- function(home_team, away_team, ms) {
-  # Simulates and plots game goals scores using the MCMC samples from the model1
-  par(mfrow = c(2, 4))
-  baseline <- ms[, "baseline"]
-  home_skill <- ms[, col_name("skill", which(teams == home_team))]
-  away_skill <- ms[, col_name("skill", which(teams == away_team))]
-  home_goals <- rpois(nrow(ms), exp(baseline + home_skill - away_skill))
-  away_goals <- rpois(nrow(ms), exp(baseline + away_skill - home_skill))
+plot_pred_comp1 <- function(home_team, away_team, stan_samples, team_names) {
+  baseline <- extract(stan_samples, pars = "baseline")$baseline
+  skills <- extract(stan_samples, pars = "skill")$skill
+  
+  home_index <- which(team_names == home_team)
+  away_index <- which(team_names == away_team)
+  
+  home_skill <- skills[, home_index]
+  away_skill <- skills[, away_index]
+  
+  home_goals <- rpois(length(baseline), exp(baseline + home_skill - away_skill))
+  away_goals <- rpois(length(baseline), exp(baseline + away_skill - home_skill))
+  
   plot_goals(home_goals, away_goals)
-  # Plots the actual distribution of goals between the two teams
-  home_goals <- d$HomeGoals[d$HomeTeam == home_team & d$AwayTeam == away_team]
-  away_goals <- d$AwayGoals[d$HomeTeam == home_team & d$AwayTeam == away_team]
-  plot_goals(home_goals, away_goals)
+  
+  home_goals_actual <- d$HomeGoals[d$HomeTeam == home_team & d$AwayTeam == away_team]
+  away_goals_actual <- d$AwayGoals[d$HomeTeam == home_team & d$AwayTeam == away_team]
+  if (length(home_goals_actual) > 0 && length(away_goals_actual) > 0) {
+    plot_goals(home_goals_actual, away_goals_actual)
+    }
   }
 ```
 
+Veamos el Chelsea (HomeTeam) contra el Man United (AwayTeam). El siguiente gráfico muestra la simulación en la primera fila y los datos históricos en la segunda.
 
 ```{r}
-plot_pred_comp1("FC Valencia", "FC Sevilla", ms1)
+plot_pred_comp1("Chelsea", "Man United", model1_fit, teams)
+```
+
+Los datos simulados se ajustan razonablemente bien a los datos históricos y tanto los datos históricos como la simulación muestran que el Valencia ganaría con una probabilidad ligeramente superior a la del Sevilla. Intercambiemos los lugares y dejemos que el Man United el (HomeTeam) y el Chealsea sea el (AwayTeam).
+```{r}
+plot_pred_comp1("Man United", "Chelsea", model1_fit, teams)
 ```
 
 
