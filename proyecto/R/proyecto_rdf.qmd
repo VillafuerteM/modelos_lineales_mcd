@@ -1,0 +1,540 @@
+---
+title: "Análisis bayesiano de de partidos de fútbol"
+subtitle: "Proyecto MLG"
+format: pdf
+editor: visual
+authors: 
+  - "Blanca Garcia - 118886"
+  - "Yuneri Perez - 199813"
+  - "Thomas Rudolf - 169293"
+  - "Mariano Villafuerte - 156057"
+toc: true
+toc-title: "Índice"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "../Proyecto MLG/data")
+```
+
+```{r librerias, include=FALSE}
+library(tidyverse)
+library(gt)
+library(dplyr)
+library(readr)
+library(R2jags)
+library(coda)
+library(mcmcplots)
+library(stringr)
+library(plyr)
+library(xtable)
+library(rstan)
+library(rstantools)
+library(bayesplot)
+```
+
+\newpage
+
+# Abstract
+
+\newpage
+
+# Introducción
+
+El fútbol es el deporte más grande y seguido del mundo y, según la FIFA, cuenta con unos 5.000 millones de seguidores en todo el mundo. En este proyecto se utilizará la inferencia bayesiana para predecir las victorias en los partidos de fútbol. Basado en los resultados y partidos de temporadas pasados, se quiere modelar / predecir los resultados de partidos.
+
+\newpage
+
+# Datos
+
+*Una descripción de los datos que se usan para el modelo, ya sean datos observados o simulados y el contexto en el que se utilizan.*
+
+En la pimera fase de proyecto se va a usar datos de la Premier League. Son los resultados de los ultimos temporadas de 2021-2022 hasta 2023-2024 (hasta 17 de marzo 2014), obtenidos de la pagina <https://www.football-data.co.uk/englandm.php>.
+
+La siguiente tabla es un ejemplo de los datos de la Premier League.
+
+```{r datos, warning=FALSE, echo=FALSE}
+E0 <- read_csv("E0.csv")
+E0<- E0 |>  mutate(Season = "2023-2024")
+E01 <- read_csv("E0 (1).csv", show_col_types = FALSE)
+E01<- E01 |>  mutate(Season = "2022-2023")
+E02 <- read_csv("E0 (2).csv", show_col_types = FALSE)
+E02<- E02 |>  mutate(Season = "2021-2022")
+E03 <- read_csv("E0 (3).csv", show_col_types = FALSE)
+E03<- E03 |>  mutate(Season = "2020-2021")
+E04 <- read_csv("E0 (4).csv", show_col_types = FALSE)
+E04<- E04 |>  mutate(Season = "2019-2020")
+E05 <- read_csv("E0 (5).csv", show_col_types = FALSE)
+E05<- E05 |>  mutate(Season = "2018-2019")
+E06 <- read_csv("E0 (6).csv", show_col_types = FALSE)
+E06<- E06 |>  mutate(Season = "2017-2018")
+E07 <- read_csv("E0 (7).csv", show_col_types = FALSE)
+E07<- E07 |>  mutate(Season = "2016-2017")
+E08 <- read_csv("E0 (8).csv", show_col_types = FALSE)
+E08<- E08 |>  mutate(Season = "2015-2016")
+E09 <- read_csv("E0 (9).csv", show_col_types = FALSE)
+E09<- E09 |>  mutate(Season = "2014-2015")
+E010 <- read_csv("E0 (10).csv", show_col_types = FALSE)
+E010<- E010 |>  mutate(Season = "2013-2014")
+E011 <- read_csv("E0 (11).csv", show_col_types = FALSE)
+E011<- E011 |>  mutate(Season = "2012-2013")
+E012 <- read_csv("E0 (12).csv", show_col_types = FALSE)
+E012<- E012 |>  mutate(Season = "2011-2012")
+E013 <- read_csv("E0 (13).csv", show_col_types = FALSE)
+E013<- E013 |>  mutate(Season = "2010-2011")
+
+# Unir todos los dataframes
+dataPL_complete <- bind_rows(E013, E012, E011, E010, E09, E08, E07, E06, E05, E04, E03, E02, E01, E0)
+
+# Verificar el resultado
+head(dataPL_complete)
+```
+
+La descripción de las variables de los datos de la Premier League son:
+
+-   Div: Division
+-   Season: Season
+-   Date: Match Date (dd/mm/yyyy)
+-   Time: Match Time
+-   HomeTeam: Home Team
+-   AwayTeam: Away Team
+-   FTHG: Full Time Home Team Goals
+-   FTAG: Full Time Away Team Goals
+-   FTR: Full Time Result (H=Home Win, D=Draw, A=Away Win)
+-   HTHG: Half Time Home Team Goals
+-   HTAG: Half Time Away Team Goals
+-   HTR: Half Time Result (H=Home Win, D=Draw, A=Away Win)
+-   HS: Home Team Shots
+-   AS: Away Team Shots
+-   HST: Home Team Shots on Target
+-   AST: Away Team Shots on Target
+-   HF: Home Team Fouls Committed
+-   AF: Away Team Fouls Committed
+-   HC: Home Team Corners
+-   AC: Away Team Corners
+-   HY: Home Team Yellow Cards
+-   AY: Away Team Yellow Cards
+-   HR: Home Team Red Cards
+-   AR: Away Team Red Cards
+
+El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de: a) calcular las probabilidades del posible resultado de goles en los partidos futuros y b) producir una clasificación confiable de los equipos. Lo antreior a partir del desarrollo de un **modelo jerárquico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson
+
+Traducción realizada con la versión gratuita del traductor DeepL.com Para nuestro análisis Baye
+
+```{r preprocessing all data}
+dataPL <- dataPL_complete |>
+  select(Div, Season, Date, HomeTeam, AwayTeam, FTHG, FTAG, FTR) |>
+  mutate(Date = as.Date(Date, format = "%d/%m/%Y"),
+         YearMatch = format(Date, "%Y"),
+         MonthMatch = format(Date, "%m"),
+         DayMatch = format(Date, "%d")) |>
+  dplyr::rename(HomeGoals = FTHG, 
+                AwayGoals = FTAG, 
+                Result = FTR)
+
+# -1 = Away win, 0 = Draw, 1 = Home win
+dataPL$MatchResult <- sign(dataPL$HomeGoals - dataPL$AwayGoals)
+# difference in goals form HOME team point of view. Negative values mean lost game
+
+dataPL$MatchGoalDiff <- dataPL$HomeGoals - dataPL$AwayGoals
+# Creating a data frame d with only the complete match results
+d <- na.omit(dataPL)
+teams <- unique(c(d$HomeTeam, d$AwayTeam))
+seasons <- unique(d$Season)
+
+
+# A list for JAGS with the data from d where the strings are coded as
+# integers
+data_list <- list(HomeGoals = d$HomeGoals, AwayGoals = d$AwayGoals,
+HomeTeam = as.numeric(factor(d$HomeTeam, levels = teams)),
+AwayTeam = as.numeric(factor(d$AwayTeam, levels = teams)),
+Season = as.numeric(factor(d$Season, levels = seasons)), n_teams = length(teams),
+n_games = nrow(d), n_seasons = length(seasons))
+
+# Convenience function to generate the type of column names Jags outputs.
+col_name <- function(name, ...) {
+paste0(name, "[", paste(..., sep = ","), "]")
+}
+```
+
+```{r preprocesing E0 current season }
+dataPL_E0 <- E0
+dataPL_E0 <- dataPL_E0 |>
+  select(Div, Season, Date, HomeTeam, AwayTeam, FTHG, FTAG, FTR) |>
+  mutate(Date = as.Date(Date, format = "%d/%m/%Y"),
+         YearMatch = format(Date, "%Y"),
+         MonthMatch = format(Date, "%m"),
+         DayMatch = format(Date, "%d")) |>
+  dplyr::rename(HomeGoals = FTHG, 
+                AwayGoals = FTAG, 
+                Result = FTR)
+
+# -1 = Away win, 0 = Draw, 1 = Home win
+dataPL_E0$MatchResult <- sign(dataPL_E0$HomeGoals - dataPL_E0$AwayGoals)
+# difference in goals form HOME team point of view. Negative values mean lost game
+
+dataPL_E0$MatchGoalDiff <- dataPL_E0$HomeGoals - dataPL_E0$AwayGoals
+# Creating a data frame d with only the complete match results
+df_2_analyse <- na.omit(dataPL_E0)
+#
+teams <- unique(c(df_2_analyse$HomeTeam, df_2_analyse$AwayTeam))
+n_teams <- length(unique(teams))
+seasons <- unique(d$Season)
+```
+
+```{r plots for Arsenal, Man City and Liverpool}
+dataPL_subset_HomeTeamMC <- dataPL[dataPL$HomeTeam == "Man City",]
+dataPL_subset_HomeTeamLi <- dataPL[dataPL$HomeTeam == "Liverpool",]
+dataPL_subset_HomeTeamAr <- dataPL[dataPL$HomeTeam == "Arsenal",]
+
+dataPL_subset_AwayTeamMC <- dataPL[dataPL$HomeTeam == "Man City",]
+dataPL_subset_AwayTeamLi <- dataPL[dataPL$AwayTeam == "Liverpool",]
+dataPL_subset_AwayTeamAr <- dataPL[dataPL$AwayTeam == "Arsenal",]
+
+ts_MC.dataPLGDiff_H <- ts(data = na.omit(dataPL_subset_HomeTeamMC$MatchGoalDiff),
+                     start=c(1,34), frequency=38) 
+ts_Li.dataPLGDiff_H <- ts(data = na.omit(dataPL_subset_HomeTeamLi$MatchGoalDiff), 
+                     start=c(1,34), frequency=38)
+ts_Ar.dataPLGDiff_H <- ts(data = na.omit(dataPL_subset_HomeTeamAr$MatchGoalDiff), 
+                     start=c(1,34), frequency=38)
+ts_MC.dataPLGDiff_A <- ts(data = na.omit(dataPL_subset_AwayTeamMC$MatchGoalDiff),
+                     start=c(1,34), frequency=38) 
+ts_Li.dataPLGDiff_A <- ts(data = na.omit(dataPL_subset_AwayTeamLi$MatchGoalDiff), 
+                     start=c(1,34), frequency=38)
+ts_Ar.dataPLGDiff_A <- ts(data = na.omit(dataPL_subset_AwayTeamAr$MatchGoalDiff), 
+                     start=c(1,34), frequency=38)
+
+
+df_Mc_vs_Li <- data.frame( 
+  goal_diff_MC_q_H = quantile(ts_MC.dataPLGDiff_H, c(0.025, 0.975)), 
+  goal_diff_Li_q_H  = quantile(ts_Li.dataPLGDiff_H, c(0.025, 0.975)),
+  goal_diff_Ar_q_H  = quantile(ts_Ar.dataPLGDiff_H, c(0.025, 0.975)),
+  goal_diff_MC_m_H = mean(ts_MC.dataPLGDiff_H), 
+  goal_diff_Li_m_H  = mean(ts_Li.dataPLGDiff_H),
+  goal_diff_Ar_m_H  = mean(ts_Ar.dataPLGDiff_H),
+  goal_diff_MC_q_A = quantile(ts_MC.dataPLGDiff_A, c(0.025, 0.975)), 
+  goal_diff_Li_q_A  = quantile(ts_Li.dataPLGDiff_A, c(0.025, 0.975)),
+  goal_diff_Ar_q_A  = quantile(ts_Ar.dataPLGDiff_A, c(0.025, 0.975)),
+  goal_diff_MC_m_A = mean(ts_MC.dataPLGDiff_A), 
+  goal_diff_Li_m_A  = mean(ts_Li.dataPLGDiff_A),
+  goal_diff_Ar_m_A  = mean(ts_Ar.dataPLGDiff_A)
+  )
+
+
+g_H <- ggplot(df_Mc_vs_Li) +
+       geom_line(aes(x=c("Man City", "Man City"), y=c(goal_diff_MC_q_H[1], goal_diff_MC_q_H[2]))) +
+  geom_point(aes(x="Man City", y= goal_diff_MC_m_H), size=5, color="skyblue")+
+         geom_line(aes(x=c("Liverpool", "Liverpool"), y=c(goal_diff_Li_q_H[1], goal_diff_Li_q_H[2]))) +
+  geom_point(aes(x="Liverpool", y= goal_diff_Li_m_H), size=5, color="red")+
+  geom_line(aes(x=c("Arsenal", "Arsenal"), y=c(goal_diff_Ar_q_H[1], goal_diff_Ar_q_H[2]))) +
+  geom_point(aes(x="Arsenal", y= goal_diff_Ar_m_H), size=5, color="darkred")+
+  labs(x="Teams", y="intervals", title = "95% confidence intervals for Teams \n over la last 10 seasons \n (diff. in goals for home matches)") +
+  theme(plot.title = element_text(hjust=0.5))
+
+
+g_A <- ggplot(df_Mc_vs_Li) +
+       geom_line(aes(x=c("Man City", "Man City"), y=c(goal_diff_MC_q_A[1], goal_diff_MC_q_A[2]))) +
+  geom_point(aes(x="Man City", y= goal_diff_MC_m_A), size=5, color="skyblue")+
+         geom_line(aes(x=c("Liverpool", "Liverpool"), y=c(goal_diff_Li_q_A[1], goal_diff_Li_q_A[2]))) +
+  geom_point(aes(x="Liverpool", y= goal_diff_Li_m_A), size=5, color="red")+
+  geom_line(aes(x=c("Arenal", "Arenal"), y=c(goal_diff_Ar_q_A[1], goal_diff_Ar_q_A[2]))) +
+  geom_point(aes(x="Arenal", y= goal_diff_Ar_m_A), size=5, color="darkred")+
+  labs(x="Teams", y="intervals", title = "95% confidence intervals for Teams \n over la last 10 seasons \n (diff. in goals for away matches)") +
+  theme(plot.title = element_text(hjust=0.5))
+
+library(patchwork)
+g_H + g_A
+
+```
+
+```{r}
+match_days_oponentes <- c(df_2_analyse$HomeTeam, df_2_analyse$AwayTeam)
+matches <- length(match_days_oponentes)/2
+match_matrix <- matrix(match_days_oponentes, nrow = matches)
+colnames(match_matrix) = c("Home", "Away")
+print("first match day")
+match_matrix[1:10,]
+```
+
+```{r preprocesing E0 and specific team, echo=FALSE}
+team_statistics<- function(Team, first_day_away, d, prev_season){
+  tstatistics <- NULL
+  team_to_predict <- Team
+  first_day_home <- abs(first_day_away-1)
+  # find matchday for team to predict
+  match_days_H <- length(d$HomeTeam[d$HomeTeam==team_to_predict])
+  match_days_A <- length(d$AwayTeam[d$AwayTeam==team_to_predict])
+  # save it for the output
+  tstatistics$match_days_H = match_days_H
+  tstatistics$match_days_A = match_days_A
+  # home goals made so far
+  home_goals_team_to_predict <- dataPL_E0$HomeGoals[dataPL_E0$HomeTeam==team_to_predict]
+  # match day vector: generally a team plays one week at home, the other week away. If the team starts at    home, first_day_away = 0, otherwise 1  
+  match_day_vector_H <- seq(1, match_days_H*2, 2) + first_day_away
+  input_vec_H <- c(home_goals_team_to_predict, match_day_vector_H )
+  # away goals made so far
+  away_goals_team_to_predict <- dataPL_E0$AwayGoals[dataPL_E0$AwayTeam==team_to_predict]
+  # same logic as for home matches
+  match_day_vector_A <- seq(1, match_days_A*2, 2)  + first_day_home 
+  input_vec_A <- c(away_goals_team_to_predict, match_day_vector_A )
+  # save it for the output
+  tstatistics$match_day_vector_H <- match_day_vector_H
+  tstatistics$match_day_vector_A <- match_day_vector_A
+
+  # generate the home goals matrix
+  home_goals_at_match_day_matrix <- matrix(input_vec_H, nrow = length(home_goals_team_to_predict))
+  # save it for the output
+  tstatistics$home_goals_at_match_day_matrix <- home_goals_at_match_day_matrix
+  # generate the away goals matrix
+  away_goals_at_match_day_matrix <- matrix(input_vec_A, nrow = length(away_goals_team_to_predict))
+  # save it for the output
+  tstatistics$away_goals_at_match_day_matrix <- away_goals_at_match_day_matrix
+  # average scoring at home form last season:
+  ma_last_season <- mean(prev_season$FTHG[prev_season$HomeTeam==team_to_predict])
+  mai <- (c(ma_last_season, home_goals_team_to_predict ))
+  mai <- cumsum(mai)/seq(1,length(mai), 1)
+  # save it for the output
+  tstatistics$mai <-mai
+  # average scoring at away form last season:
+  mb_last_season <- mean(prev_season$FTAG[prev_season$AwayTeam==team_to_predict])
+  mbi <- (c(mb_last_season, away_goals_team_to_predict ))
+  mbi <- cumsum(mbi)/seq(1,length(mbi), 1)
+  # save it for the output
+  tstatistics$mbi <- mbi
+  tstatistics$q1_A <- quantile(d$MatchGoalDiff[d$AwayTeam==team_to_predict], 0.025)
+  tstatistics$q2_A <- quantile(d$MatchGoalDiff[d$AwayTeam==team_to_predict], 0.975)
+  tstatistics$q1_H <- quantile(d$MatchGoalDiff[d$HomeTeam==team_to_predict], 0.025)
+  tstatistics$q2_H <- quantile(d$MatchGoalDiff[d$HomeTeam==team_to_predict], 0.975)
+  tstatistics$average_diff_goals_A <- mean(d$MatchGoalDiff[d$AwayTeam==team_to_predict])
+  tstatistics$average_diff_goals_H <- mean(d$MatchGoalDiff[d$HomeTeam==team_to_predict])
+  tstatistics
+  return(tstatistics)
+}
+```
+
+```{r}
+tail(match_matrix, 10)
+```
+
+```{r}
+statistics_Liverpool <- team_statistics("Liverpool", 1, df_2_analyse, E01)
+statistics_CrystalPalace <- team_statistics("Crystal Palace", 1, df_2_analyse, E01)
+statistics_Tottenham <-team_statistics("Tottenham", 1, df_2_analyse, E01)
+statistics_ManCity <-team_statistics("Man City", 1, df_2_analyse, E01)
+statistics_Arsenal <-team_statistics("Arsenal", 0, df_2_analyse, E01)
+```
+
+```{r plot the current season results in diffence in goals home and away}}
+  
+df_current_season <- data.frame(
+  goal_diff_MC_q_H = c(statistics_ManCity$q1_H,statistics_ManCity$q2_H ), 
+  goal_diff_MC_m_H = statistics_ManCity$average_diff_goals_H, 
+  goal_diff_MC_q_A = c(statistics_ManCity$q1_A,statistics_ManCity$q2_A ), 
+  goal_diff_MC_m_A = statistics_ManCity$average_diff_goals_A,
+  goal_diff_Ar_q_H = c(statistics_Arsenal$q1_H,statistics_Arsenal$q2_H ), 
+  goal_diff_Ar_m_H = statistics_Arsenal$average_diff_goals_H, 
+  goal_diff_Ar_q_A = c(statistics_Arsenal$q1_A,statistics_Arsenal$q2_A ), 
+  goal_diff_Ar_m_A = statistics_Arsenal$average_diff_goals_A,
+  goal_diff_Li_q_H = c(statistics_Liverpool$q1_H,statistics_Liverpool$q2_H ), 
+  goal_diff_Li_m_H = statistics_Liverpool$average_diff_goals_H, 
+  goal_diff_Li_q_A = c(statistics_Liverpool$q1_A,statistics_Arsenal$q2_A ), 
+  goal_diff_Li_m_A = statistics_Liverpool$average_diff_goals_A
+
+  )  
+
+
+g_H <- ggplot(df_current_season) +
+       geom_line(aes(x=c("Man City", "Man City"), y=c(goal_diff_MC_q_H[1], goal_diff_MC_q_H[2]))) +
+  geom_point(aes(x="Man City", y= goal_diff_MC_m_H), size=5, color="skyblue")+
+         geom_line(aes(x=c("Liverpool", "Liverpool"), y=c(goal_diff_Li_q_H[1], goal_diff_Li_q_H[2]))) +
+  geom_point(aes(x="Liverpool", y= goal_diff_Li_m_H), size=5, color="red")+
+  geom_line(aes(x=c("Arsenal", "Arsenal"), y=c(goal_diff_Ar_q_H[1], goal_diff_Ar_q_H[2]))) +
+  geom_point(aes(x="Arsenal", y= goal_diff_Ar_m_H), size=5, color="darkred")+
+  labs(x="Teams", y="intervals", title = "95% confidence intervals for Teams \n over la last season \n (diff. in goals for home matches)") +
+  theme(plot.title = element_text(hjust=0.5))
+
+
+g_A <- ggplot(df_Mc_vs_Li) +
+       geom_line(aes(x=c("Man City", "Man City"), y=c(goal_diff_MC_q_A[1], goal_diff_MC_q_A[2]))) +
+  geom_point(aes(x="Man City", y= goal_diff_MC_m_A), size=5, color="skyblue")+
+         geom_line(aes(x=c("Liverpool", "Liverpool"), y=c(goal_diff_Li_q_A[1], goal_diff_Li_q_A[2]))) +
+  geom_point(aes(x="Liverpool", y= goal_diff_Li_m_A), size=5, color="red")+
+  geom_line(aes(x=c("Arenal", "Arenal"), y=c(goal_diff_Ar_q_A[1], goal_diff_Ar_q_A[2]))) +
+  geom_point(aes(x="Arenal", y= goal_diff_Ar_m_A), size=5, color="darkred")+
+  labs(x="Teams", y="intervals", title = "95% confidence intervals for Teams \n over la last season \n (diff. in goals for away matches)") +
+  theme(plot.title = element_text(hjust=0.5))
+g_H + g_A
+
+## prep data for table print
+# Liverpool
+Liverpool <- c(df_current_season$goal_diff_Li_m_H, 
+               df_current_season$goal_diff_Li_m_A, 
+               df_Mc_vs_Li$goal_diff_Li_m_H,
+              df_Mc_vs_Li$goal_diff_Li_m_A)
+# Manchester City
+ManCity <- c(df_current_season$goal_diff_MC_m_H, 
+              df_current_season$goal_diff_MC_m_A, 
+              df_Mc_vs_Li$goal_diff_MC_m_H,
+              df_Mc_vs_Li$goal_diff_MC_m_A)
+# Arsenal
+Arsenal <- c(df_current_season$goal_diff_Ar_m_H, 
+               df_current_season$goal_diff_Ar_m_A, 
+               df_Mc_vs_Li$goal_diff_Ar_m_H,
+              df_Mc_vs_Li$goal_diff_Ar_m_A)
+df_print <- data.frame(Liverpool, ManCity, Arsenal)
+df_print |> gt()
+```
+
+```{r prep data for stan model, echo=FALSE}
+
+
+# select and prepare data for STAN model:
+last_day <- min(length(statistics_CrystalPalace$mai),
+                length(statistics_CrystalPalace$mbi),
+                length(statistics_Liverpool$mai),
+                length(statistics_Liverpool$mbi),
+                length(statistics_Liverpool$home_goals_at_match_day_matrix[, 1]),
+                length(statistics_CrystalPalace$away_goals_at_match_day_matrix[, 1]))
+
+dataPL_E0_stan <- list(n=n_teams-2, # number of teams 
+               N= min(length(statistics_CrystalPalace$match_day_vector_A),
+                      length(statistics_Liverpool$match_day_vector_H)), # number of data points
+               T=statistics_Liverpool$match_days_H , # number of matches played
+               Xi=statistics_Liverpool$home_goals_at_match_day_matrix[1:last_day,],# number of goals at home
+               Yi=statistics_CrystalPalace$away_goals_at_match_day_matrix[1:last_day,], # number of goals away
+               maH = statistics_Liverpool$mai[1:last_day], 
+               mbH = statistics_Liverpool$mbi[1:last_day],
+               maA = statistics_CrystalPalace$mai[1:last_day], 
+               mbA = statistics_CrystalPalace$mbi[1:last_day]
+ )
+```
+
+\newpage
+
+# Métodos
+
+## Modelo Dimanico
+
+(basado en "Dynamic Bayesian forecasting models of football match outcomes with estimation of the evolution variance parameter" de Alun Owen)
+
+$$
+X_{i, j,t} ~ Poi(\mu_{i, j, t})
+$$ $$
+Y_{i, j,t} ~ Poi(\lambda_{i, j,t})
+$$ $$
+log(\mu_{i, j,t}) = \alpha_{i,t} + \beta_{ j,t} + \gamma_H
+$$ $$
+log(\lambda_{i, j,t}) = \alpha_{j,t} + \beta_{ i,t} + \gamma_A
+$$ Los métodos que se utilizarán para resolver el problema. Los vistos en clase y si se incluye alguno que no se revisó, mencionar referencias y una descripción muy general del método.
+
+```{r}
+# -1 = Away win, 0 = Draw, 1 = Home win
+#laliga$MatchResult <- sign(laliga$HomeGoals - laliga$AwayGoals)
+```
+
+```{r}
+
+```
+
+```{stan, output.var = "dglm_PL"}
+data {
+  int <lower=0> T; // number of matches
+  int <lower=0> N; // number of data points
+  int Xi[T, 2]; // Observed counts of goals scored by team i playing at home
+  int Yi[T, 2]; // Observed counts of goals scored by team i playing away
+  real maH[T];  // Attack abilities for home teams
+  real mbH[T];   // Defense abilities for home teams
+  real maA[T];  // Attack abilities for away teams
+  real mbA[T];   // Defense abilities for away teams
+
+}
+
+parameters {
+  real alphaH[T];  // Attack abilities for teams
+  real betaH[T];   // Defense abilities for teams
+  real alphaA[T];  // Attack abilities for teams
+  real betaA[T];   // Defense abilities for teams
+  real gamma_H;   // overall average scoring rate at home
+  real gamma_A;   // overall average scoring rate away
+  //real<lower=0> Xi_estim[T]; // Observed counts of goals scored by team i playing at home
+  //real<lower=0> Yi_estim[T]; // Observed counts of goals scored by team i playing away
+
+
+}  
+model {
+  // Priors for attack and defense abilities
+ 
+  
+  for (i in 1:T){
+    alphaH[i] ~ normal(maH[i], 0.001);
+    betaH[i] ~ normal(mbH[i], 0.001);
+    alphaA[i] ~ normal(maA[i], 0.001);
+    betaA[i] ~ normal(mbA[i], 0.001);
+  
+  }
+  gamma_H ~ gamma(0.1, 0.01);
+  gamma_A ~ gamma(0.01, 0.001);
+
+  // Constraints for identifiability
+  //sum(alpha) == 0;  // Constraint 1
+  //sum(beta) == 0;   // Constraint 2
+  
+  
+  // Likelihood for observed counts
+     for (i in 1:T) {
+      real mu = exp(alphaH[i] + betaH[i] + gamma_H);   // 
+      real lambda= exp(alphaA[i] + betaA[i] + gamma_A); // 
+      Xi[i, 1] ~ poisson_log(mu);  // Poisson goals at home
+      Yi[i, 1] ~ poisson_log(lambda); // Poisson goals away
+  }
+}
+generated quantities {
+    real X_pred;  // Predicted number of goals in next home game
+    real Y_pred;  // Predicted number of goals in next away game
+    real mu_exp = exp(alphaH[T] + betaH[T] + gamma_H);
+    real lambda_exp = exp(alphaA[T] + betaA[T] + gamma_A); // 
+    X_pred = poisson_rng(mu_exp);
+    Y_pred = poisson_rng(lambda_exp);
+  }
+
+```
+
+```{r run the stan model, echo=FALSE}
+
+fit <- sampling(dglm_PL, data = dataPL_E0_stan, chains = 4, iter = 5000)
+
+```
+
+```{r graphs, echo=FALSE}
+posterior_data_LivVsCP <- extract(fit)
+df <- data.frame(value = c(posterior_data_LivVsTot$X_pred, posterior_data_LivVsTot$Y_pred),
+                 group = rep(c("Liverpool", "Crsital Place"), each = 100))
+
+# Create boxplot
+g1 <- ggplot(df, aes(x = group, y = value, fill = group)) +
+  geom_boxplot() +
+  labs(title = "Boxplot goals during match",
+       x = "Teams",
+       y = "Goals") +
+  theme_minimal()
+g1
+```
+
+\newpage
+
+# Resultados
+
+La aplicación de los métodos a los datos. Los resultados deben ser presentados en forma fácil de entender, a través de gráficas, tablas de resumen de los resultados. En todos los casos, las gráficas y tablas tienen que ser relevantes para la comunicación de los resultados, no tienen que ser redundantes, y tienen que ser correctas.
+
+\newpage
+
+# Conclusiones
+
+Un resumen de la conclusión del estudio, en donde se especifíque cómo se resolvió el problema propuesto, así como futuras vías de ampliación del estudio. También mencionar las limitaciones que se encontraron, y porqué no se pudieron atacar algunos aspectos originales del problema.
+
+\newpage
+
+# Fuentes
+
+\newpage
+
+# Anexos
