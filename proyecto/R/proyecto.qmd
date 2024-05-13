@@ -181,9 +181,11 @@ seasons <- unique(d$Season)
 
 # Métodos
 
-Los métodos que se utilizarán para resolver el problema. Los vistos en clase y si se incluye alguno que no se revisó, mencionar referencias y una descripción muy general del método.
+Para el desarrollo del modelo, al ser jerárquico, se realizaron varias iteraciones, de modo que con cada iteración el modelo se va a justando y busca ahondar el las problemáticas de este proyecto.
 
-\## Modelando resultados de partidos de fútbol: Iteración 1 ¿Cómo se distribuye el número de goles de cada equipo en un partido de fútbol?
+## Iteración 1
+
+¿Cómo se distribuye el número de goles de cada equipo en un partido de fútbol?
 
 Para responder la preguta anterior, supondremos que todos los partidos de fútbol tienen aproximadamente la misma duración, que ambos equipos tienen suficientes oportunidades de marcar un gol y que cada equipo tiene la misma probabilidad de marcar un gol en cada oportunidad de gol. Dadas estas suposiciones, la distribución del número de goles de cada equipo debería estar bien representada por una distribución de `Poisson`. La comparación entre la distribución real del número de goles marcados y una distribución de `Poisson` con el mismo número medio de goles marcados corroborá esta definición.
 
