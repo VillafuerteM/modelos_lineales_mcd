@@ -185,9 +185,13 @@ Para el desarrollo del modelo, al ser jerárquico, se realizaron varias iteracio
 
 ## Iteración 1
 
-¿Cómo se distribuye el número de goles de cada equipo en un partido de fútbol?
+La primera iteración consiste en modelar la distribución del número de goles de cada equipo en un partido de fútbol. Para lograr esto, se supone que todos los partidos de fútbol tienen aproximadamente la misma duración, que ambos equipos tienen suficientes oportunidades de marcar un gol y que cada equipo tiene la misma probabilidad de marcar un gol en cada oportunidad de gol.
 
-Para responder la preguta anterior, supondremos que todos los partidos de fútbol tienen aproximadamente la misma duración, que ambos equipos tienen suficientes oportunidades de marcar un gol y que cada equipo tiene la misma probabilidad de marcar un gol en cada oportunidad de gol. Dadas estas suposiciones, la distribución del número de goles de cada equipo debería estar bien representada por una distribución de `Poisson`. La comparación entre la distribución real del número de goles marcados y una distribución de `Poisson` con el mismo número medio de goles marcados corroborá esta definición.
+Se puede asumir una distribución Poisson para el número de goles debido a la concentración en valores más bajos. Por lo general, lo más común es ver dos goles por partido (según nuestro conocimiento previo). Además, se puede suponer que el anotar un gol no afecta la habilidad del equipo de meter o recibir otro gol (debatible por factores humanos).
+
+Dadas estas suposiciones, la distribución del número de goles de cada equipo debería estar bien representada por una distribución de `Poisson`.
+
+La comparación entre la distribución real del número de goles marcados y una distribución de `Poisson` con el mismo número medio de goles marcados corroborá esta definición.
 
 ```{r warning=FALSE}
 # Combinar los goles en casa y fuera en un solo vector y crear un dataframe
