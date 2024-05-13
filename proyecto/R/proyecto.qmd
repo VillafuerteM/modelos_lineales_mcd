@@ -37,6 +37,8 @@ theme_light()
 
 # Abstract
 
+El objetivo de este proyecto es la aplicación de un modelo bayesiano para la predicción de resultados de partidos de fútbol. Además, el modelo es capaz de calcular las probabilidades del posible resultado de goles en los partidos futuros y producir una clasificación confiable de los equipos. El modelo desarrollado es un modelo jerárquico que asume una distribución Poisson para los resultados de los goles.
+
 \newpage
 
 # Introducción
@@ -47,47 +49,68 @@ El fútbol es el deporte más grande y seguido del mundo y, según la FIFA, cuen
 
 # Datos
 
-*Una descripción de los datos que se usan para el modelo, ya sean datos observados o simulados y el contexto en el que se utilizan.*
-
-En la pimera fase de proyecto se va a usar datos de la Premier League. Son los resultados de los ultimos temporadas de 2021-2022 hasta 2023-2024 (hasta 17 de marzo 2014), obtenidos de la pagina <https://www.football-data.co.uk/englandm.php>.
+En la pimera fase del proyecto se va a usar datos de la Premier League. Son los resultados de los ultimos temporadas de 2021-2022 hasta 2023-2024 (hasta 17 de marzo 2024), obtenidos de la pagina <https://www.football-data.co.uk/englandm.php>.
 
 La siguiente tabla es un ejemplo de los datos de la Premier League.
 
-```{r datos, warning=FALSE}
+```{r datos, warning=FALSE, echo=FALSE}
 E0 <- read_csv("E0.csv")
 E0<- E0 |>  mutate(Season = "2023-2024")
+
 E01 <- read_csv("E0 (1).csv", show_col_types = FALSE)
 E01<- E01 |>  mutate(Season = "2022-2023")
+
 E02 <- read_csv("E0 (2).csv", show_col_types = FALSE)
 E02<- E02 |>  mutate(Season = "2021-2022")
+
 E03 <- read_csv("E0 (3).csv", show_col_types = FALSE)
 E03<- E03 |>  mutate(Season = "2020-2021")
+
 E04 <- read_csv("E0 (4).csv", show_col_types = FALSE)
 E04<- E04 |>  mutate(Season = "2019-2020")
+
 E05 <- read_csv("E0 (5).csv", show_col_types = FALSE)
 E05<- E05 |>  mutate(Season = "2018-2019")
+
 E06 <- read_csv("E0 (6).csv", show_col_types = FALSE)
 E06<- E06 |>  mutate(Season = "2017-2018")
+
 E07 <- read_csv("E0 (7).csv", show_col_types = FALSE)
 E07<- E07 |>  mutate(Season = "2016-2017")
+
 E08 <- read_csv("E0 (8).csv", show_col_types = FALSE)
 E08<- E08 |>  mutate(Season = "2015-2016")
+
 E09 <- read_csv("E0 (9).csv", show_col_types = FALSE)
 E09<- E09 |>  mutate(Season = "2014-2015")
+
 E010 <- read_csv("E0 (10).csv", show_col_types = FALSE)
 E010<- E010 |>  mutate(Season = "2013-2014")
+
 E011 <- read_csv("E0 (11).csv", show_col_types = FALSE)
 E011<- E011 |>  mutate(Season = "2012-2013")
+
 E012 <- read_csv("E0 (12).csv", show_col_types = FALSE)
 E012<- E012 |>  mutate(Season = "2011-2012")
+
 E013 <- read_csv("E0 (13).csv", show_col_types = FALSE)
 E013<- E013 |>  mutate(Season = "2010-2011")
 
 # Unir todos los dataframes
 dataPL_complete <- bind_rows(E0, E01, E02, E03, E04, E05, E06, E07, E08, E09, E010, E011, E012, E013)
 
+dataPL_complete <- dataPL_complete %>%
+  mutate(Date = as.Date(Date, format="%d/%m/%Y"),
+         Time = as.POSIXct(Time, format="%H:%M"))
+
 # Verificar el resultado
-head(dataPL_complete)
+head(dataPL_complete) %>% 
+  select(Div, Season,Date,Time,HomeTeam,AwayTeam,
+         FTHG,FTAG,FTR,HTHG,HTAG,HTR,HS,AS,HST,AST,
+         HF,AF,HC,AC,HY,AY,HR,AR) %>%
+  gt() %>% 
+  fmt_date(columns=c(Date), date_style = 7) %>%
+  fmt_time(columns=c(Time), time_style = 2)
 ```
 
 La descripción de las variables de los datos de la Premier League son:
@@ -117,9 +140,25 @@ La descripción de las variables de los datos de la Premier League son:
 -   HR: Home Team Red Cards
 -   AR: Away Team Red Cards
 
-El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de: a) calcular las probabilidades del posible resultado de goles en los partidos futuros y b) producir una clasificación confiable de los equipos. Lo antreior a partir del desarrollo de un **modelo jerárquico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson:
+El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de: a) calcular las probabilidades del posible resultado de goles en los partidos futuros y b) producir una clasificación confiable de los equipos. Lo anterior, a partir del desarrollo de un **modelo jerárquico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson:
 
-```{r preprocessing}
+$$
+\textrm{Goles}\sim \textrm{Poisson}(\lambda)
+$$
+
+A partir de este punto, se hicieron unas modificaciones al conjunto de datos original, de modo que se tienen nombres más intuitivos: HomeGoals en lugar de FTHG, AwayGoals en vez de FTAG y Result sustituye a FTR. De igual manera, se descompone la variable de la fecha del partido en sus distintos componentes: día, mes y año.
+
+Se crea, además la variable de MatchResult:
+
+$$
+\textrm{MatchResult} = \left\{ \begin{array}{cl}
+-1 & \text{Away win} \\
+0 & \text{Draw} \\
+1 & \text{Home win}
+\end{array} \right.
+$$
+
+```{r preprocessing, echo=FALSE}
 dataPL <- dataPL_complete |>
   select(Div, Season, Date, HomeTeam, AwayTeam, FTHG, FTAG, FTR) |>
   mutate(Date = as.Date(Date, format = "%d/%m/%y"),
@@ -143,8 +182,9 @@ seasons <- unique(d$Season)
 # Métodos
 
 Los métodos que se utilizarán para resolver el problema. Los vistos en clase y si se incluye alguno que no se revisó, mencionar referencias y una descripción muy general del método.
-## Modelando resultados de partidos de fútbol: Iteración 1
-¿Cómo se distribuye el número de goles de cada equipo en un partido de fútbol? 
+
+\## Modelando resultados de partidos de fútbol: Iteración 1 ¿Cómo se distribuye el número de goles de cada equipo en un partido de fútbol?
+
 Para responder la preguta anterior, supondremos que todos los partidos de fútbol tienen aproximadamente la misma duración, que ambos equipos tienen suficientes oportunidades de marcar un gol y que cada equipo tiene la misma probabilidad de marcar un gol en cada oportunidad de gol. Dadas estas suposiciones, la distribución del número de goles de cada equipo debería estar bien representada por una distribución de `Poisson`. La comparación entre la distribución real del número de goles marcados y una distribución de `Poisson` con el mismo número medio de goles marcados corroborá esta definición.
 
 ```{r warning=FALSE}
@@ -171,22 +211,10 @@ p2 <- ggplot(data.frame(Goals = rpois(9999, mean_goals)), aes(x = Goals)) +
 p1+p2
 
 ```
+
 \newpage
-Es importante destacar que no todos los equipos son igual de buenos, por lo que para esto se supondrá que todos los equipos tienen una variable de habilidad latente y que la habilidad de un equipo menos la habilidad del equipo contrario define el resultado previsto de un partido. Como se supone que el número de goles tiene una distribución Poisson, es natural que las habilidades de los equipos estén en la escala logarítmica de la media de dicha distribución. La distribución del número de goles del equipo $i$ frente al equipo $j$ es la siguiente:
-$$Goals \sim Poisson(\lambda)$$
-$$log(\lambda) = baseline + skill_i − skill_j$$
-donde la línea de base (baseline) es el promedio logarítmico del número de goles cuando ambos equipos son igual de buenos. El resultado de goles de un partido entre el equipo local $i$ y el equipo visitante $j$ se modela como:
-$$HomeGoals_{i,j} \sim Poison(\lambda_{home,i,j})$$
-$$AwayGoals_{i,j} \sim Poison(\lambda_{away,i,j})$$
-$$log(\lambda_{home,i,j}) = baseline + skill_i − skill_j$$
-$$log(\lambda_{away,i,j}) = baseline + skill_j − skill_i$$
-Para contar con un modelo bayesiano agregaremos algunas distribuciones a priori sobre la línea de base (baseline) y la habilidad (skill) de todos los $n$ equipos:
-$$baseline \sim Normal(0, 4^2)$$
-$$skill_{1...n} \sim Normal(\mu_{teams}, \sigma^2_{teams})$$
-$$\mu_{teams} \sim Normal(0, 4^2)$$
-$$\sigma_{teams} \sim U(0, 3)$$
-Cabe destacar que con base al conocimiento que tenemos de fútbol se establecieron estas distribuciones a priori. Por ejemplo, el valor a priori de la línea de base tiene una desviación estándar de 4, pero como está en la escala logarítmica del número medio de goles, corresponde a una desviación estándar de la media 0 que cubre el intervalo de [0.02, 54.6] goles. 
-Convertir esto en un modelo JAGS requiere algunos ajustes menores. El modelo tiene que pasar por todos los resultados de los partidos, lo que añade algunos ciclos `for`. JAGS parametriza la distribución normal con precisión (el recíproco de la varianza) en lugar de con varianza, por lo que hay que convertir las hiper prioris. Por último, tenemos que "anclar" la habilidad de un equipo a una constante, de lo contrario la habilidad media puede desviarse libremente. Estos ajustes dan como resultado la siguiente descripción del modelo:
+
+Es importante destacar que no todos los equipos son igual de buenos, por lo que para esto se supondrá que todos los equipos tienen una variable de habilidad latente y que la habilidad de un equipo menos la habilidad del equipo contrario define el resultado previsto de un partido. Como se supone que el número de goles tiene una distribución Poisson, es natural que las habilidades de los equipos estén en la escala logarítmica de la media de dicha distribución. La distribución del número de goles del equipo $i$ frente al equipo $j$ es la siguiente: $$Goals \sim Poisson(\lambda)$$ $$log(\lambda) = baseline + skill_i − skill_j$$ donde la línea de base (baseline) es el promedio logarítmico del número de goles cuando ambos equipos son igual de buenos. El resultado de goles de un partido entre el equipo local $i$ y el equipo visitante $j$ se modela como: $$HomeGoals_{i,j} \sim Poison(\lambda_{home,i,j})$$ $$AwayGoals_{i,j} \sim Poison(\lambda_{away,i,j})$$ $$log(\lambda_{home,i,j}) = baseline + skill_i − skill_j$$ $$log(\lambda_{away,i,j}) = baseline + skill_j − skill_i$$ Para contar con un modelo bayesiano agregaremos algunas distribuciones a priori sobre la línea de base (baseline) y la habilidad (skill) de todos los $n$ equipos: $$baseline \sim Normal(0, 4^2)$$ $$skill_{1...n} \sim Normal(\mu_{teams}, \sigma^2_{teams})$$ $$\mu_{teams} \sim Normal(0, 4^2)$$ $$\sigma_{teams} \sim U(0, 3)$$ Cabe destacar que con base al conocimiento que tenemos de fútbol se establecieron estas distribuciones a priori. Por ejemplo, el valor a priori de la línea de base tiene una desviación estándar de 4, pero como está en la escala logarítmica del número medio de goles, corresponde a una desviación estándar de la media 0 que cubre el intervalo de \[0.02, 54.6\] goles. Convertir esto en un modelo JAGS requiere algunos ajustes menores. El modelo tiene que pasar por todos los resultados de los partidos, lo que añade algunos ciclos `for`. JAGS parametriza la distribución normal con precisión (el recíproco de la varianza) en lugar de con varianza, por lo que hay que convertir las hiper prioris. Por último, tenemos que "anclar" la habilidad de un equipo a una constante, de lo contrario la habilidad media puede desviarse libremente. Estos ajustes dan como resultado la siguiente descripción del modelo:
 
 ```{stan, output.var="model1"}
 data {
@@ -267,7 +295,9 @@ model1_fit %>%
   gt() %>%
   fmt_number()
 ```
+
 Utilizando las muestras MCMC generadas, ahora puedo observar los valores de habilidad creíbles de cualquier equipo. Veamos el trazado y la distribución de los parámetros de habilidad del `Chelsea` y el `Man United`.
+
 ```{r graphs_model1_Chelsea, warning=FALSE}
 model1_trace_ch <- mcmc_trace(
   model1_fit,
@@ -284,7 +314,6 @@ model1_dens_ch <- mcmc_areas(
 model1_trace_ch / model1_dens_ch
 ```
 
-
 ```{r graphs_model1_ManUnited, warning=FALSE}
 model1_trace_mu <- mcmc_trace(
   model1_fit,
@@ -300,8 +329,11 @@ model1_dens_mu <- mcmc_areas(
 
 model1_trace_mu / model1_dens_mu
 ```
+
 \newpage
+
 Parece que el `Chelsea` y el `Man United` tienen una habilidad similar, siendo el Chelsea ligeramente mejor. Utilizando las muestras MCMC no sólo es posible observar la distribución de los valores de los parámetros, sino que también es sencillo simular partidos entre equipos y observar la distribución creíble del número de goles marcados y la probabilidad de victoria del equipo local, victoria del equipo visitante o empate. Las siguientes funciones simulan partidos con un equipo como local y otro como visitante y representan el resultado previsto junto con los resultados reales de cualquier partido del conjunto de datos de la Premier League.
+
 ```{r}
 plot_goals <- function(home_goals, away_goals) {
   n_matches <- length(home_goals)
@@ -355,11 +387,10 @@ plot_pred_comp1("Chelsea", "Man United", model1_fit, teams)
 ```
 
 Los datos simulados se ajustan razonablemente bien a los datos históricos y tanto los datos históricos como la simulación muestran que el Valencia ganaría con una probabilidad ligeramente superior a la del Sevilla. Intercambiemos los lugares y dejemos que el Man United el (HomeTeam) y el Chealsea sea el (AwayTeam).
+
 ```{r}
 plot_pred_comp1("Man United", "Chelsea", model1_fit, teams)
 ```
-
-
 
 # Resultados
 
