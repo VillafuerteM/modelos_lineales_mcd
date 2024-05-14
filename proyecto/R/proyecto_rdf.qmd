@@ -356,7 +356,7 @@ match_matrix <- data.frame(Home = df_2_analyse$HomeTeam,
 tail(match_matrix, 10)
 ```
 
-Esta información se puede genera para cualquier equipo, se aplico para *Liverpool*, *Manchester City, Tottemham, Cristal Place y Arsenal.* La gráfica señala la media de los goles en casa (izquiera) y afuera (derecha) de Arsenal, Manchester City y Liverpool, los tres equipos que actualmente están competiendo por el campionato de la Premier League.
+Esta información se puede genera para cualquier equipo, se aplico para *Liverpool*, *Manchester City, Tottemham, Cristal Place y Arsenal.* La gráfica señala la media de la differencia en goles en casa (izquiera) y afuera (derecha) de Arsenal, Manchester City y Liverpool, los tres equipos que actualmente están competiendo por el campionato de la Premier League. Los valores de "afuera" salen negativos porque se calcula la diferencia entre *casa* y *afuera*. Como son los equipos mas exitos acutalmente, consiguen mas goles en juegos afuera que sus oponentes.
 
 ```{r, warning=FALSE, echo=FALSE}
 statistics_Liverpool <- team_statistics("Liverpool", 1, df_2_analyse, E01)
@@ -423,27 +423,50 @@ Arsenal <- c(df_current_season$goal_diff_Ar_m_H,
 df_print <- data.frame(Liverpool, ManCity, Arsenal)
 ```
 
-```{r prep data for stan model, echo=FALSE}
+```{r prep data for stan model Liverpool vs Man City, echo=FALSE}
 
 
-# select and prepare data for STAN model:
-last_day <- min(length(statistics_ManCity$mai),
+# select and prepare data for STAN model (Liverpool vs Man City):
+last_day_MC_Liv <- min(length(statistics_ManCity$mai),
                 length(statistics_ManCity$mbi),
                 length(statistics_Liverpool$mai),
                 length(statistics_Liverpool$mbi),
                 length(statistics_Liverpool$home_goals_at_match_day_matrix[, 1]),
                 length(statistics_ManCity$away_goals_at_match_day_matrix[, 1]))
 
-dataPL_E0_stan <- list(n=n_teams-2, # number of teams 
+dataPL_E0_stan_MC_Liv <- list(n=n_teams-2, # number of teams 
                N= min(length(statistics_ManCity$match_day_vector_A),
                       length(statistics_Liverpool$match_day_vector_H)), # number of data points
                T=min(statistics_Liverpool$match_days_H, statistics_ManCity$match_days_A) , # number of matches played
-               Xi=statistics_Liverpool$home_goals_at_match_day_matrix[1:last_day,],# number of goals at home
-               Yi=statistics_ManCity$away_goals_at_match_day_matrix[1:last_day,], # number of goals away
-               maH = statistics_Liverpool$attack_abilities_at_home[1:last_day],#$mai[1:last_day], 
-               mbH = statistics_Liverpool$defense_abilities_at_home[1:last_day],#$mbi[1:last_day],
-               maA = statistics_ManCity$attack_abilities_away[1:last_day],#$mai[1:last_day], 
-               mbA = statistics_ManCity$defense_abilities_away[1:last_day]#$mbi[1:last_day]
+               Xi=statistics_Liverpool$home_goals_at_match_day_matrix[1:last_day_MC_Liv,],# number of goals at home
+               Yi=statistics_ManCity$away_goals_at_match_day_matrix[1:last_day_MC_Liv,], # number of goals away
+               maH = statistics_Liverpool$attack_abilities_at_home[1:last_day_MC_Liv],#$mai[1:last_day], 
+               mbH = statistics_Liverpool$defense_abilities_at_home[1:last_day_MC_Liv],#$mbi[1:last_day],
+               maA = statistics_ManCity$attack_abilities_away[1:last_day_MC_Liv],#$mai[1:last_day], 
+               mbA = statistics_ManCity$defense_abilities_away[1:last_day_MC_Liv]#$mbi[1:last_day]
+ )
+```
+
+```{r prep data for stan model Liverpool vs Arsenal}
+
+# select and prepare data for STAN model (Liverpool vs Arsenal):
+last_day_Ar_Liv <- min(length(statistics_Arsenal$mai),
+                length(statistics_Arsenal$mbi),
+                length(statistics_Liverpool$mai),
+                length(statistics_Liverpool$mbi),
+                length(statistics_Liverpool$home_goals_at_match_day_matrix[, 1]),
+                length(statistics_Arsenal$away_goals_at_match_day_matrix[, 1]))
+
+dataPL_E0_stan_Ar_Liv <- list(n=n_teams-2, # number of teams 
+               N= min(length(statistics_Arsenal$match_day_vector_A),
+                      length(statistics_Liverpool$match_day_vector_H)), # number of data points
+               T=min(statistics_Liverpool$match_days_H, statistics_Arsenal$match_days_A) , # number of matches played
+               Xi=statistics_Liverpool$home_goals_at_match_day_matrix[1:last_day_Ar_Liv,],# number of goals at home
+               Yi=statistics_Arsenal$away_goals_at_match_day_matrix[1:last_day_Ar_Liv,], # number of goals away
+               maH = statistics_Liverpool$attack_abilities_at_home[1:last_day_Ar_Liv],#$mai[1:last_day], 
+               mbH = statistics_Liverpool$defense_abilities_at_home[1:last_day_Ar_Liv],#$mbi[1:last_day],
+               maA = statistics_Arsenal$attack_abilities_away[1:last_day_Ar_Liv],#$mai[1:last_day], 
+               mbA = statistics_Arsenal$defense_abilities_away[1:last_day_Ar_Liv]#$mbi[1:last_day]
  )
 ```
 
@@ -543,12 +566,14 @@ generated quantities {
 
 ```{r run the stan model, echo=FALSE, warning=FALSE}
 
-fit <- rstan::sampling(dglm_PL, data = dataPL_E0_stan, chains = 4, iter = 5000)
+fit_MC_Liv <- rstan::sampling(dglm_PL, data = dataPL_E0_stan_MC_Liv, chains = 4, iter = 5000)
+
+fit_Ar_Liv <- rstan::sampling(dglm_PL, data = dataPL_E0_stan_Ar_Liv, chains = 4, iter = 5000)
 
 ```
 
-```{r graphs, echo=FALSE, warning=FALSE}
-posterior_data <- extract(fit)
+```{r graphs Liverpool vs Man City, echo=FALSE, warning=FALSE}
+posterior_data <- extract(fit_MC_Liv)
 df <- data.frame(HomeTeam = posterior_data$X_pred, 
                  AwayTeam = posterior_data$Y_pred)
                                   
@@ -566,19 +591,47 @@ g_A
 
 ```
 
+```{r graphs Liverpool vs Arsenal, echo=FALSE, warning=FALSE}
+posterior_data <- extract(fit_Ar_Liv)
+df <- data.frame(HomeTeam = posterior_data$X_pred, 
+                 AwayTeam = posterior_data$Y_pred)
+                                  
+df_plot <- data.frame(teams = c("Home Team", "Away Team"), 
+                      mTeams = c(mean(df$HomeTeam), mean(df$AwayTeam)), 
+                      q1 = c(quantile(df$HomeTeam, 0.025), quantile(df$AwayTeam, 0.025)),
+                      q2 = c(quantile(df$HomeTeam, 0.975), quantile(df$AwayTeam, 0.975))
+                      )
+g_A <- ggplot(df_plot, aes(y=teams, x = mTeams, group = teams)) +
+  geom_line()+
+  geom_pointrange(aes(xmin = q1, 
+                      xmax = q2, colour = c("Liverpool", "Arsenal") ))
+g_A
+
+```
+
 \newpage
 
 # Resultados
 
-La aplicación de los métodos a los datos. Los resultados deben ser presentados en forma fácil de entender, a través de gráficas, tablas de resumen de los resultados. En todos los casos, las gráficas y tablas tienen que ser relevantes para la comunicación de los resultados, no tienen que ser redundantes, y tienen que ser correctas.
+El modelo predice muy optimista los resultados con muchos goles de ambos lados. Es puede tener varios razones:
+
+1.  La manera de estimar las habilidades de defender no es la adequada y salen muy bajos en el modelo. No se considero que la suma de todos las habildiades de defender (y ataquar) debe de ser 0, como se propone en el paper de Alun Owen.
+
+2.  Otra razon puede ser que se toma en cuenta todos los goles de todos los partidos para calcular las habilidades de ataquar y defender. Una posible mejora podria ser implementar un filtro que solo toma en cuenta los resultados de unos ultimos días de juegos, por ejemple 5 días y adicionalmente con un peso mas fuerte a los ultimos.
+
+3.  Para las ligas europeas, como la Premier League, hay muchas informaciónes adicionales, como el numer de esquinas, tiros, tiros a la porteria, tiros que toquen la portería, etc. No se tomo en cuenta esa información debido a que la intencións es ajustar el modelo a la LigaMX en un futuro. Por lo general, esa información está disponible.
+
+4.  Se podria pensar en un factor addicional que refleja si el equipo está competiendo en otra competencia nacional o internacional ya que eso puede afectar al cansacio de los equipos conforme avanza la termporada.
 
 \newpage
 
 # Conclusiones
 
-Un resumen de la conclusión del estudio, en donde se especifíque cómo se resolvió el problema propuesto, así como futuras vías de ampliación del estudio. También mencionar las limitaciones que se encontraron, y porqué no se pudieron atacar algunos aspectos originales del problema.
+El modelo dinamico predice los resultados muy optimista para la Premier League. Debido a que no se toma en cuenta varios factores como se menciona en le capitulo de los resultados. Para trabajos futuros se puede pensar a implementar las comentarios mencionados. Adicionalmente será util implementar que el modelo predice para cada día de juego los partidos automatizado. Por el momento hay que definir los partidos manualmente lo que puede llevar a errores a momento de definirlos.
 
 \newpage
+
+# Referencias
 
 Alun Owen: "Dynamic Bayesian forecasting models of football match outcomes with estimation of the evolution variance parameter", Mathematics Education Centre, Loughborough University, Loughborough, Leicestershire LE11 3TU, UK,2009
 
