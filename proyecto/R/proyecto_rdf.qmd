@@ -252,7 +252,7 @@ g_A <- ggplot(df_2_analyse.summeryAway,
                   xmin=AwayGoals[,2], xmax = AwayGoals[,3]))+
   geom_point() +
   geom_pointrange(colour = "red")
-
+library(patchwork)
 g_H + g_A
 
 df_2_analyse.summeryAway1 <- df_2_analyse |> 
@@ -344,7 +344,7 @@ team_statistics<- function(Team, first_day_away, df, prev_season){
   goals_made_at_home <-df$HomeGoals[df$HomeTeam==team_to_predict]
   tstatistics$attack_abilities_at_home <- cumsum(goals_made_at_home)/seq(1,length(goals_made_at_home), 1) 
   goals_made_away <-df$AwayGoals[df$AwayTeam==team_to_predict]
-  tstatistics$attack_abilities_away <- -cumsum(goals_made_away)/seq(1,length(goals_made_away), 1) 
+  tstatistics$attack_abilities_away <- cumsum(goals_made_away)/seq(1,length(goals_made_away), 1) 
 
   return(tstatistics)
 }
@@ -463,9 +463,7 @@ $$
 
 $$
 log(\lambda_{i, j,t}) = \alpha_{j,t} + \beta_{ i,t} + \gamma_A
-$$ 
-Los nuevos valores de $\alpha$ y $\beta$ se calcula con el valor #Moving Average# de cada uno hasta el partido anterior y se supone que tiene una distribución normal. Basado en el paper de Alun Owen se pone a un valor de $\sigma = 0.001$ 
-$$
+$$ Los nuevos valores de $\alpha$ y $\beta$ se calcula con el valor #Moving Average# de cada uno hasta el partido anterior y se supone que tiene una distribución normal. Basado en el paper de Alun Owen se pone a un valor de $\sigma = 0.001$ $$
 \alpha_{t} \sim N(\alpha_{t-1}, 0.001)
 $$
 
@@ -473,11 +471,9 @@ $$
 \beta_{t} \sim N(\beta_{t-1}, 0.001)
 $$
 
-Ambas valores de $\gamma$ se define como una distribución $\Gamma$: 
-$$
+Ambas valores de $\gamma$ se define como una distribución $\Gamma$: $$
 \gamma_H \sim \Gamma(0.1, 0.01)
-$$ 
-$$
+$$ $$
 \gamma_A \sim \Gamma(0.01, 0.001)
 $$
 
