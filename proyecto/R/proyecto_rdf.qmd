@@ -1,5 +1,5 @@
 ---
-title: "Análisis bayesiano de de partidos de fútbol"
+title: "Anexo 8 Análisis bayesiano de de partidos de fútbol"
 subtitle: "Proyecto MLG"
 format: pdf
 editor: visual
