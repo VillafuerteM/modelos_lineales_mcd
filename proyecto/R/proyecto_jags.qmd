@@ -451,10 +451,7 @@ Aquí descubrimos que sin importar que cambiemos de lugar a los equipos, los dat
 
 ## Iteración 2
 
-Para tener en cuenta la ventaja de jugar en casa, cambiaremos nuestro modelo inicial donde dividiremos la línea base (baseline) en dos componentes:
-1\. Una línea base (home_baseline) local
-2\. Una línea base (away_baseline) visitante.
-El siguiente modelo `JAGS` aplica el cambio mencionado anteriormente:
+Para tener en cuenta la ventaja de jugar en casa, cambiaremos nuestro modelo inicial donde dividiremos la línea base (baseline) en dos componentes: 1. Una línea base (home_baseline) local 2. Una línea base (away_baseline) visitante. El siguiente modelo `JAGS` aplica el cambio mencionado anteriormente:
 
 ```{r  model2, echo=FALSE, tidy=FALSE}
 model2<- "model {
@@ -598,6 +595,7 @@ ggplot(d, aes(x = Season, y = HomeTeam)) +
 ```
 
 En la tercer iteración del modelo, se incluye la variabilidad interanual de la habilidad (skill) de los equipos. Esto se hizo permitiendo que cada equipo tuviera un parámetro de habilidad (skill) por temporada (season), pero conectando los parámetros de habilidad (skill), es decir, el parámetro de habilidad (skill) de un equipo para la temporada (season) $t$ en la distribución a priori para el parámetro de habilidad de ese equipo para la temporada $t + 1$, de modo que $$skill_{t+1} \sim Normal(skill_t, \sigma^2_{season})$$ para todas las diferentes $t$, excepto la primera temporada, que recibe una distribución a priori vaga. En este caso, $\sigma^2_{season}$ es un parámetro estimado a partir de todo el conjunto de datos disponibles. Las líneas de base local (home_baseline) y visitante (away_baseline) reciben el mismo tipo de a priori y a continuación, se muestra el modelo `JAGS` resultante.
+
 ```{r model3, echo=FALSE, tidy=FALSE}
 model3 <- "model {
 for(i in 1:n_games) {
@@ -696,6 +694,7 @@ dic_m1 <- dic.samples(model1_fit, 40000, "pD")
 dic_m2 <- dic.samples(model2_fit, 40000, "pD")
 dic_m3 <- dic.samples(model3_fit, 40000, "pD")
 ```
+
 ```{r}
 diffdic_m1_m2 <- diffdic(dic_m1, dic_m2)
 diffdic_m2_m3 <- diffdic(dic_m2, dic_m3)
@@ -722,7 +721,6 @@ diff_dic_results %>%
   fmt_number(columns = c(Difference, Std_Error), decimals = 4)
 ```
 
-
 **Model 3** es el modelo más adecuado para futuros análisis y predicciones, ya que ofrece el mejor equilibrio entre capacidad predictiva y complejidad del modelo. Aunado a lo anterior, consideramos que los supuestos del modelo actual (model3) son más razonables, así que con base en los resultados del comparativo y de los supuestos utilizados elegimos este modelo como el mejor. Ahora es el momento de completar los objetivos establecidos en la introducción. Es decir, clasificar a los equipos de Premier League y predecir el resultado de los partidos futuros.
 
 # Clasificación de los equipos de la Premier League
@@ -739,10 +737,199 @@ old_par <- par(mar=c(2,0.7,0.7,0.7), xaxs='i')
 caterplot(team_skill, labels.loc="above", val.lim=c(0.7, 3.8))
 par(old_par)
 ```
+
 ```{r fig.height=3, fig.width=7, results='hide', echo=FALSE, warning=FALSE, message=FALSE}
 plotPost(team_skill[, "Man City"] - team_skill[, "Liverpool"], compVal = 0, xlab = "← Liverpool     vs     Man City →")
 ```
+
 El Man City es el mejor equipo con una probabilidad de `r round(mean(team_skill[, "Man City"] - team_skill[, "Liverpool"] > 0) * 100)` %.
+
+# Predicción de los resultados de los partidos futuros
+
+En el conjunto de datos de la Premier League faltan los resultados de los 23 últimos partidos de la temporada 2023/2024. Ya que la base cuenta con información al 6 de mayo de 2024, se utilizará el modelo para predecir los resultados de los partidos restantes.
+
+Con el modelo podemos predecir y simular los resultados. El código R que se muestra a continuación calcula un número de medidas para cada partido (tanto los partidos con resultados conocidos como los desconocidos): - La moda del número simulado de goles, es decir, el número más probable de goles marcados. - La media del número simulado de goles, que es la mejor estimación del número medio de goles en un partido. - El resultado más probable para cada partido. - Una muestra aleatoria de las distribuciones de resultados creíbles de local, visitante y en los partidos.
+
+```{r predict_results, tidy=FALSE, echo=FALSE}
+n <- nrow(matrix_samples3)
+m3_pred <- sapply(1:nrow(d), function(i) {
+  home_team <- which(teams == d$HomeTeam[i])
+  away_team <- which(teams == d$AwayTeam[i])
+  season <- which(seasons == d$Season[i])
+  home_skill <- matrix_samples3[, col_name("skill", season, home_team)] 
+  away_skill <- matrix_samples3[, col_name("skill", season, away_team)]
+  home_baseline <- matrix_samples3[, col_name("home_baseline", season)]
+  away_baseline <- matrix_samples3[, col_name("away_baseline", season)]
+
+  home_goals <- rpois(n, exp(home_baseline + home_skill - away_skill))
+  away_goals <- rpois(n, exp(away_baseline + away_skill - home_skill))
+  home_goals_table <- table(home_goals)
+  away_goals_table <- table(away_goals)
+  match_results <- sign(home_goals - away_goals)
+  match_results_table <- table(match_results)
+  
+  mode_home_goal <- as.numeric(names(home_goals_table)[ which.max(home_goals_table)])
+  mode_away_goal <- as.numeric(names(away_goals_table)[ which.max(away_goals_table)])
+  match_result <-  as.numeric(names(match_results_table)[which.max(match_results_table)])
+  rand_i <- sample(seq_along(home_goals), 1)
+  
+  c(mode_home_goal = mode_home_goal, mode_away_goal = mode_away_goal, match_result = match_result,
+    mean_home_goal = mean(home_goals), mean_away_goal = mean(away_goals),
+    rand_home_goal = home_goals[rand_i], rand_away_goal = away_goals[rand_i],
+    rand_match_result = match_results[rand_i])
+})
+m3_pred <- t(m3_pred)
+```
+
+A continuación, se compara la distribución del número de goles en los datos con la moda, la media y el número aleatorio de goles previstos para todos los partidos (centrándonos en el número de goles del equipo local).\
+En primer lugar, la distribución real del número de goles de los equipos locales.
+
+```{r histogram_goals ,echo=FALSE, warning=FALSE}
+ggplot(d, aes(x = HomeGoals)) +
+  geom_histogram(breaks = (-1:10) + 0.5, color = "black", fill = "slateblue2", alpha = 0.7) +
+  scale_x_continuous(limits = c(-0.5, 10), breaks = 0:10) +
+  ggtitle("Histogram of Home Goals") +
+  xlab("Home Goals") +
+  ylab("Frequency")
+```
+
+Para casi todos los partidos el número más probable de goles es uno. En realidad, sin tener conocimiento alguno de fúbol, sería razonable apostar por un gol del equipo local, que es `r round(mean(m3_pred[ , "mode_home_goal"] == 1) * 100)`% de las veces la mejor apuesta. El siguiente gráfico muestra la distribución de los modas a partir de la distribución prevista de goles locales en cada partido. Es decir, cuál es el resultado más probable, para el equipo local, en cada partido.
+
+```{r histogram_mode_home_goal ,echo=FALSE, warning=FALSE}
+data <- data.frame(mode_home_goal = m3_pred[ , "mode_home_goal"])
+
+ggplot(data, aes(x = mode_home_goal)) +
+  geom_histogram(breaks = (-1:10) + 0.5, color = "black", fill = "turquoise3", alpha = 0.7) +
+  scale_x_continuous(limits = c(-0.5, 10), breaks = 0:10) +
+  ggtitle("Histogram of Mode Home Goal") +
+  xlab("Mode Home Goal") +
+  ylab("Frequency")
+
+```
+
+Para la mayoría de los partidos el número esperado de goles es 2. Es decir, incluso si tu apuesta más segura es un gol, esperarías ver alrededor de dos goles.
+
+```{r histogram_mean_home_goal ,echo=FALSE, warning=FALSE}
+data_mean <- data.frame(mean_home_goal = m3_pred[ , "mean_home_goal"])
+
+ggplot(data_mean, aes(x = mean_home_goal)) +
+  geom_histogram(breaks = (-1:10) + 0.5, color = "black", fill = "royalblue2", alpha = 0.7) +
+  scale_x_continuous(limits = c(-0.5, 10), breaks = 0:10) +
+  ggtitle("Histogram of Mean Home Goal") +
+  xlab("Mean Home Goal") +
+  ylab("Frequency")
+```
+
+La distribución de la moda y la media de goles no coincide con el número real de goles. Esto es inesperado, ya que se esperaría que la distribución de goles aleatorios (donde el número de goles para cada partido se ha extraído aleatoriamente de la distribución de goles en casa para ese partido) fuera similar al número real de goles en casa. Al observar el histograma a continuación, parece que esto es así.
+
+```{r histogram_rand_home_goal ,echo=FALSE, warning=FALSE}
+data_rand <- data.frame(rand_home_goal = m3_pred[ , "rand_home_goal"])
+
+ggplot(data_rand, aes(x = rand_home_goal)) +
+  geom_histogram(breaks = (-1:10) + 0.5, color = "black", fill = "salmon1", alpha = 0.7) +
+  scale_x_continuous(limits = c(-0.5, 10), breaks = 0:10) +
+  ggtitle("Histogram of Random Home Goal") +
+  xlab("Random Home Goal") +
+  ylab("Frequency")
+```
+
+También se evaluará la precisión del modelo en la predicción de los datos. Sin embargo, lo ideal sería usar la validación cruzada para esto, dado que el número de parámetros efectivos es considerablemente menor que la cantidad de puntos de datos, una comparación directa debería proporcionar una estimación razonable de la precisión de las predicciones.
+
+```{r, echo=FALSE, warning=FALSE}
+mode_pred <- mean(d$HomeGoals == m3_pred[, "mode_home_goal"], na.rm = TRUE)
+mean_pred <- mean((d$HomeGoals - m3_pred[, "mean_home_goal"])^2, na.rm = TRUE)
+ 
+results_table <- data.frame(
+  Metric = c("Accuracy (Mode)", "Mean Squared Error (MSE)"),
+  Value = c(mode_pred, mean_pred))
+ 
+formatted_table <- results_table %>%
+  gt() %>%
+  tab_header(
+    title = "Metricas del modelo de predicción de goles de Local"
+  ) %>%
+  fmt_number(
+    columns = vars(Value),
+    decimals = 3)
+ 
+formatted_table
+```
+
+En promedio, el modelo predice correctamente el número de goles en casa el `r round(mean(laliga$HomeGoals == m3_pred[ , "mode_home_goal"], na.rm=T) * 100)`% de las veces y estima el número medio de goles con un error cuadrático medio de `r round(mean((laliga$HomeGoals - m3_pred[ , "mean_home_goal"])^2, na.rm=T), 2)`. A continuación, revisaremos los resultados reales y previstos de los partidos. El gráfico siguiente muestra los resultados de los partidos en los datos:
+
+```{r histogram_games_results ,echo=FALSE, warning=FALSE}
+data_gres <- data.frame(MatchResult = d$MatchResult)
+
+ggplot(data_gres, aes(x = MatchResult)) +
+  geom_histogram(breaks = (-2:1) + 0.5, color = "black", fill = "seagreen3", alpha = 0.7) +
+  scale_x_continuous(breaks = -1:1, labels = c("Visitor Win", "Draw", "Home Win")) +
+  ggtitle("Histogram of Match Results") +
+  xlab("Match Result") +
+  ylab("Frequency")
+```
+
+Para la mayoría de los partidos, la opción más segura es apostar por el equipo local. Aunque los empates ocurren con cierta frecuencia, nunca son la apuesta más confiable.
+
+```{r histogram_match_result_pred ,echo=FALSE, warning=FALSE}
+data_predmr <- data.frame(match_result_pred = m3_pred[ , "match_result"])
+
+# Crear el gráfico de barras con ggplot2
+ggplot(data_predmr, aes(x = match_result_pred)) +
+  geom_bar(color = "black", fill = "seagreen3", alpha = 0.7) +
+  scale_x_continuous(breaks = -1:1, labels = c("Visitor Win", "Draw", "Home Win")) +
+  ggtitle("Histogram of Match Results") +
+  xlab("Match Result") +
+  ylab("Frequency")
+```
+
+Como en el caso del número de goles locales, los resultados aleatorios de los partidos tienen una distribución similar a los resultados reales de los partidos.
+
+```{r histogram_rand_match_result ,echo=FALSE, warning=FALSE}
+data_randmr <- data.frame(rand_match_result = m3_pred[ , "rand_match_result"])
+
+ggplot(data_randmr, aes(x = rand_match_result)) +
+  geom_bar(color = "black", fill = "seagreen3", alpha = 0.7) +
+  scale_x_continuous(breaks = -1:1, labels = c("Visitor Win", "Draw", "Home Win")) +
+  ggtitle("Histogram of Random Match Result") +
+  xlab("Random Match Result") +
+  ylab("Frequency")
+```
+
+El modelo predice el resultado correcto del partido el `r round(mean(d$MatchResult == m3_pred[ , "match_result"], na.rm=T) * 100)`% de las veces. Ahora que se ha comprobado que el modelo predice razonablemente la historia de la Premier League, se procederá a predecir el final de la liga. A continuación se presenta la predicción del número promedio de goles y la predicción del ganador para cada partido.
+
+```{r results='asis'}
+premier_forecast <- d[is.na(d$HomeGoals), c("Season", "HomeTeam", "AwayTeam")]
+m3_forecast <- m3_pred[is.na(d$HomeGoals),] 
+premier_forecast$mean_home_goals <- round(m3_forecast[,"mean_home_goal"], 1) 
+premier_forecast$mean_away_goals <- round(m3_forecast[,"mean_away_goal"], 1)
+premier_forecast$mode_home_goals <- m3_forecast[,"mode_home_goal"] 
+premier_forecast$mode_away_goals <- m3_forecast[,"mode_away_goal"]
+premier_forecast$predicted_winner <- ifelse(m3_forecast[ , "match_result"] == 1, premier_forecast$HomeTeam, 
+                                           ifelse(m3_forecast[ , "match_result"] == -1, premier_forecast$AwayTeam, "Draw"))
+
+rownames(premier_forecast) <- NULL
+print(xtable(premier_forecast, align="ccccccccc"), type="html")
+```
+```{r}
+library(knitr)
+library(dplyr)
+
+premier_forecast <- d[is.na(d$HomeGoals), c("Season", "Date", "HomeTeam", "AwayTeam")]
+m3_forecast <- m3_pred[is.na(d$HomeGoals),] 
+premier_forecast <- premier_forecast %>%
+  mutate(
+    mean_home_goals = round(m3_forecast[, "mean_home_goal"], 1),
+    mean_away_goals = round(m3_forecast[, "mean_away_goal"], 1),
+    mode_home_goals = m3_forecast[, "mode_home_goal"],
+    mode_away_goals = m3_forecast[, "mode_away_goal"],
+    predicted_winner = ifelse(m3_forecast[, "match_result"] == 1, HomeTeam, 
+                              ifelse(m3_forecast[, "match_result"] == -1, AwayTeam, "Draw"))
+  )
+
+# Generar la tabla en formato Markdown
+kable(premier_forecast, format = "markdown", align = "c")
+
+```
 
 # Resultados
 
