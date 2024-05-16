@@ -65,7 +65,7 @@ Para este proyecto se utilizarán datos de la Premier League. Son los resultados
 La siguiente tabla es un ejemplo de los datos de la Premier League.
 
 ```{r datos, warning=FALSE, echo=FALSE}
-setwd('../')
+#setwd('../')
 
 E0 <- read_csv("data/E0.csv")
 E0<- E0 |>  mutate(Season = "2023-2024")
@@ -208,6 +208,28 @@ data_list <- list(HomeGoals = d$HomeGoals, AwayGoals = d$AwayGoals,
 col_name <- function(name, ...) {
   paste0(name, "[", paste(..., sep=",") , "]")
 }
+```
+
+```{r base_to_predict, echo=FALSE, warning=FALSE, message=FALSE}
+games_pred <- read_csv("data/Games_Pred.csv")
+
+games_pred <- games_pred |>
+  mutate(
+    Div = as.character(Div),
+    Season = as.character(Season),
+    Date = as.Date(Date),
+    HomeTeam = as.character(HomeTeam),
+    AwayTeam = as.character(AwayTeam),
+    HomeGoals = as.numeric(HomeGoals),
+    AwayGoals = as.numeric(AwayGoals),
+    Result = as.character(Result),
+    YearMatch = as.character(YearMatch),
+    MonthMatch = as.character(MonthMatch),
+    DayMatch = as.character(DayMatch),
+    MatchResult = as.numeric(MatchResult)
+  )
+
+d2 <- bind_rows(d, games_pred)
 ```
 
 \newpage
@@ -662,7 +684,14 @@ season_sigma ~ dunif(0, 3)
 Desafortunadamente, estos cambios en el modelo introdujeron autocorrelación al ejecutar el muestreador MCMC, por lo que se optó por aumentar el número de muestras y la cantidad de adelgazamiento.
 
 ```{r fit_model3, warning=FALSE, message=FALSE, echo=FALSE, results='hide', cache=TRUE}
-model3_fit <- jags.model(textConnection(model3), data=data_list, 
+data_list3 <- list(HomeGoals = d2$HomeGoals, AwayGoals = d2$AwayGoals, 
+                  HomeTeam = as.numeric(factor(d2$HomeTeam, levels=teams)),
+                  AwayTeam = as.numeric(factor(d2$AwayTeam, levels=teams)),
+                  Season = as.numeric(factor(d2$Season, levels=seasons)),
+                  n_teams = length(teams), n_games = nrow(d2), 
+                  n_seasons = length(seasons))
+
+model3_fit <- jags.model(textConnection(model3), data=data_list3, 
                          n.chains=3, n.adapt=10000)
 update(model3_fit, 10000)
 samples3 <- coda.samples(model3_fit, 
@@ -766,18 +795,20 @@ plotPost(team_skill[, "Man City"] - team_skill[, "Liverpool"], compVal = 0, xlab
 
 El Man City es el mejor equipo con una probabilidad de `r round(mean(team_skill[, "Man City"] - team_skill[, "Liverpool"] > 0) * 100)` %.
 
-# Predicción de los resultados de los partidos futuros
+# Resultados
+
+## Predicción de los resultados de los partidos futuros
 
 En el conjunto de datos de la Premier League faltan los resultados de los 23 últimos partidos de la temporada 2023/2024. Ya que la base cuenta con información al 6 de mayo de 2024, se utilizará el modelo para predecir los resultados de los partidos restantes.
 
-Con el modelo podemos predecir y simular los resultados. El código R que se muestra a continuación calcula un número de medidas para cada partido (tanto los partidos con resultados conocidos como los desconocidos): - La moda del número simulado de goles, es decir, el número más probable de goles marcados. - La media del número simulado de goles, que es la mejor estimación del número medio de goles en un partido. - El resultado más probable para cada partido. - Una muestra aleatoria de las distribuciones de resultados creíbles de local, visitante y en los partidos.
+Con el modelo podemos predecir y simular los resultados. Esto se hizo calculando un número de medidas para cada partido (tanto los partidos con resultados conocidos como los desconocidos): - La moda del número simulado de goles, es decir, el número más probable de goles marcados. - La media del número simulado de goles, que es la mejor estimación del número medio de goles en un partido. - El resultado más probable para cada partido. - Una muestra aleatoria de las distribuciones de resultados creíbles de local, visitante y en los partidos.
 
 ```{r predict_results, tidy=FALSE, echo=FALSE}
 n <- nrow(matrix_samples3)
-m3_pred <- sapply(1:nrow(d), function(i) {
-  home_team <- which(teams == d$HomeTeam[i])
-  away_team <- which(teams == d$AwayTeam[i])
-  season <- which(seasons == d$Season[i])
+m3_pred <- sapply(1:nrow(d2), function(i) {
+  home_team <- which(teams == d2$HomeTeam[i])
+  away_team <- which(teams == d2$AwayTeam[i])
+  season <- which(seasons == d2$Season[i])
   home_skill <- matrix_samples3[, col_name("skill", season, home_team)] 
   away_skill <- matrix_samples3[, col_name("skill", season, away_team)]
   home_baseline <- matrix_samples3[, col_name("home_baseline", season)]
@@ -918,55 +949,39 @@ ggplot(data_randmr, aes(x = rand_match_result)) +
 ```
 
 El modelo predice el resultado correcto del partido el `r round(mean(d$MatchResult == m3_pred[ , "match_result"], na.rm=T) * 100)`% de las veces. Ahora que se ha comprobado que el modelo predice razonablemente la historia de la Premier League, se procederá a predecir el final de la liga. A continuación se presenta la predicción del número promedio de goles y la predicción del ganador para cada partido.
+```{r results_forecast, results='asis', echo=FALSE}
+pl_forecast <- d2[is.na(d2$HomeGoals), c("Season", "HomeTeam", "AwayTeam")]
+m3_forecast <- m3_pred[is.na(d2$HomeGoals),] 
+pl_forecast$mean_home_goals <- round(m3_forecast[,"mean_home_goal"], 1) 
+pl_forecast$mean_away_goals <- round(m3_forecast[,"mean_away_goal"], 1)
+pl_forecast$mode_home_goals <- m3_forecast[,"mode_home_goal"] 
+pl_forecast$mode_away_goals <- m3_forecast[,"mode_away_goal"]
+pl_forecast$predicted_winner <- ifelse(m3_forecast[ , "match_result"] == 1, pl_forecast$HomeTeam, 
+                                           ifelse(m3_forecast[ , "match_result"] == -1, pl_forecast$AwayTeam, "Draw"))
 
-```{r results='asis'}
-premier_forecast <- d[is.na(d$HomeGoals), c("Season", "HomeTeam", "AwayTeam")]
-m3_forecast <- m3_pred[is.na(d$HomeGoals),] 
-premier_forecast$mean_home_goals <- round(m3_forecast[,"mean_home_goal"], 1) 
-premier_forecast$mean_away_goals <- round(m3_forecast[,"mean_away_goal"], 1)
-premier_forecast$mode_home_goals <- m3_forecast[,"mode_home_goal"] 
-premier_forecast$mode_away_goals <- m3_forecast[,"mode_away_goal"]
-premier_forecast$predicted_winner <- ifelse(m3_forecast[ , "match_result"] == 1, premier_forecast$HomeTeam, 
-                                           ifelse(m3_forecast[ , "match_result"] == -1, premier_forecast$AwayTeam, "Draw"))
-
-rownames(premier_forecast) <- NULL
-print(xtable(premier_forecast, align="ccccccccc"), type="html")
+rownames(pl_forecast) <- NULL
+kable(pl_forecast, format = "markdown", align = "c")
 ```
-
-```{r}
-library(knitr)
-library(dplyr)
-
-premier_forecast <- d[is.na(d$HomeGoals), c("Season", "Date", "HomeTeam", "AwayTeam")]
-m3_forecast <- m3_pred[is.na(d$HomeGoals),] 
-premier_forecast <- premier_forecast %>%
-  mutate(
-    mean_home_goals = round(m3_forecast[, "mean_home_goal"], 1),
-    mean_away_goals = round(m3_forecast[, "mean_away_goal"], 1),
-    mode_home_goals = m3_forecast[, "mode_home_goal"],
-    mode_away_goals = m3_forecast[, "mode_away_goal"],
-    predicted_winner = ifelse(m3_forecast[, "match_result"] == 1, HomeTeam, 
-                              ifelse(m3_forecast[, "match_result"] == -1, AwayTeam, "Draw"))
-  )
-
-# Generar la tabla en formato Markdown
-kable(premier_forecast, format = "markdown", align = "c")
-
-```
-
-# Resultados
-
-La aplicación de los métodos a los datos. Los resultados deben ser presentados en forma fácil de entender, a través de gráficas, tablas de resumen de los resultados. En todos los casos, las gráficas y tablas tienen que ser relevantes para la comunicación de los resultados, no tienen que ser redundantes, y tienen que ser correctas.
 
 \newpage
 
 # Conclusiones
 
-Un resumen de la conclusión del estudio, en donde se especifíque cómo se resolvió el problema propuesto, así como futuras vías de ampliación del estudio. También mencionar las limitaciones que se encontraron, y porqué no se pudieron atacar algunos aspectos originales del problema.
+En el transcurso de este análisis, se ha trabajado con el objetivo de modelar los resultados de los partidos en el conjunto de datos, y se han logrado alcanzar importantes hitos:
+
+-Modelado de resultados y probabilidades: Se ha desarrollado un modelo capaz de calcular las probabilidades de posibles resultados de goles en partidos futuros de la Premier League. Esta capacidad es fundamental para la toma de decisiones informadas en el ámbito deportivo y puede ser de gran utilidad para diversos fines, ya sea en el rendimiento de los equipos, o simplemente para la diversión de los aficionados. -Producción de clasificaciones confiables: Además de la predicción de resultados de partidos, se ha obtenido una clasificación confiable de los equipos. Esta información es valiosa para evaluar el desempeño de los equipos a lo largo del tiempo y puede servir como base para análisis más profundos y decisiones estratégicas. -Predicción de resultados recientes: Se logró predecir con éxito los resultados de los últimos 20 partidos de la Premier League, lo que demuestra la capacidad predictiva y la validez del modelo desarrollado. Estos resultados son prometedores y sugieren que el modelo podría ser útil para predecir resultados con un grado de precisión relevante.
+
+Sin embargo, es importante mencionar algunas limitaciones y áreas de mejora para futuros estudios:
+
+-Limitaciones encontradas: Se encontraron ciertas limitaciones en el alcance del proyecto, como la imposibilidad de elevar la complejidad del modelo debido a restricciones computacionales o la necesidad de correr el modelo particionad, lo cual debe tenerse en cuenta al interpretar los resultados y al considerar futuras investigaciones. -Futuras vías de ampliación del estudio: Para ampliar este estudio, se podría considerar la inclusión de más variables relevantes, como lesiones de jugadores clave, condiciones climáticas, estadísticas históricas adicionales, o inclusive el criterio experto de algunos comentaristas o críticos del deporte. Asimismo, explorar diferentes técnicas de modelado o validar el modelo con datos de temporadas futuras puede mejorar aún más la precisión y la robustez del análisis.
+
+En resumen, este proyecto ha sentado las bases para un análisis profundo y continuo del rendimiento y los resultados en este deporte, proporcionando tanto herramientas predictivas como insights útiles para la toma de decisiones estratégicas, al menos de la Premier League.
 
 \newpage
 
 # Fuentes
+
+•⁠ ⁠Bååth, R. (2015). Modeling Match Results in Soccer using a Hierarchical Bayesian Poisson Model. LUCS Minor, (18), Lund University Cognitive Science. ISSN 1104-1609. •⁠ ⁠Football-Data.co.uk. (n.d.). England Historical Football Results. Recuperado de https://www.football-data.co.uk/englandm.php •⁠ ⁠Kruschke, J. K. (2014). Doing Bayesian data analysis: A tutorial with R, JAGS, and Stan (2nd ed.). Academic Press.
 
 \newpage
 
