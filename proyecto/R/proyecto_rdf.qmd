@@ -82,7 +82,7 @@ dataPL_complete <- bind_rows(E013, E012, E011, E010, E09, E08, E07, E06, E05, E0
 
 # Datos y Objectivo
 
-El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de: a) calcular las probabilidades del posible resultado de goles en los partidos futuros y b) producir una clasificación confiable de los equipos. Lo antreior a partir del desarrollo de un **modelo dinámico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson. Los datos son los mismos que en el analisis del **modelo jequarico bayesiano**, visto anteriormente.
+El objetivo del presente análisis no es sólo modelar el resultados de los partidos en el conjunto de datos, sino también ser capaz de: a) calcular las probabilidades del posible resultado de goles en los partidos futuros y b) producir una clasificación confiable de los equipos. Lo anterior a partir del desarrollo de un **modelo dinámico bayesiano**, donde los resultados de los goles se supone que se distribuyen de acuerdo con una distribución de Poisson. Los datos son los mismos que en el análisis del **modelo jerárquico bayesiano**, visto anteriormente.
 
 ```{r preprocessing all data, echo=FALSE, cache=TRUE}
 dataPL <- dataPL_complete |>
@@ -332,7 +332,7 @@ df_teams <- data.frame(teams = c(match_matrix$Home[1:10], match_matrix$Away[1:10
 
 ```
 
-Esta información se puede genera para cualquier equipo, se aplico para *Liverpool*, *Manchester City, Tottemham, Cristal Place y Arsenal, Manchester United, Fullham y Aston Villa.* La gráfica señala la media de la differencia en goles en casa (izquiera) y afuera (derecha) de Arsenal, Manchester City y Liverpool, los tres equipos que actualmente están competiendo por el campionato de la Premier League (al momento de implementarlo). Los valores de "visita" salen negativos porque se calcula la diferencia entre *casa* y *vista*. Como son los equipos mas exitos acutalmente, consiguen mas goles en juegos afuera que sus oponentes.
+Esta información se puede genera para cualquier equipo, se aplico para *Liverpool*, *Manchester City, Tottemham, Cristal Place y Arsenal, Manchester United, Fullham y Aston Villa.* La gráfica señala la media de la diferencia en goles en casa (izquierda) y afuera (derecha) de Arsenal, Manchester City y Liverpool, los tres equipos que actualmente están competiendo por el campeonato de la Premier League (al momento de implementarlo). Los valores de "visita" salen negativos porque se calcula la diferencia entre *casa* y *vista*. Como son los equipos mas éxitos actualmente, consiguen mas goles en juegos afuera que sus oponentes.
 
 ```{r statistics for some teams, warning=FALSE, echo=FALSE, cache=TRUE}
 
@@ -484,7 +484,7 @@ $$
 X_{i, j,t} \sim Poi(\mu_{i, j, t})
 $$ $$ 
 Y_{i, j,t} ~ Poi(\lambda_{i, j,t})
-$$ Los parametros $\mu$ y $\lambda$ representan e la media de que ocurre un gol en casa o de visita, respectivamente. Solo hay goles completos (el resultado no puede ser 2.6 vs 1.2) y la distribución *Poisson* tiene sentido. Para poder definir valores para $\mu$ y $\lambda$ se propone un factor de ataque $\alpha$ y un factor de defensa $\beta$. Estos factores son dinámicos y cambian durante la temporada. En este caso se decido tomar un "moving average" de los goles que logra cada equipo como factor de ataque y los goles que reciben como factor de defensa hasta el día antes del siguiente partido. El factor de defensa se toma negativo. Adicional se propones un factor general $\gamma$ para la el quipo que juega en casa y que juega afuera.
+$$ Los parámetros $\mu$ y $\lambda$ representan e la media de que ocurre un gol en casa o de visita, respectivamente. Solo hay goles completos (el resultado no puede ser 2.6 vs 1.2) y la distribución *Poisson* tiene sentido. Para poder definir valores para $\mu$ y $\lambda$ se propone un factor de ataque $\alpha$ y un factor de defensa $\beta$. Estos factores son dinámicos y cambian durante la temporada. En este caso se decido tomar un "moving average" de los goles que logra cada equipo como factor de ataque y los goles que reciben como factor de defensa hasta el día antes del siguiente partido. El factor de defensa se toma negativo. Adicional se propones un factor general $\gamma$ para la el quipo que juega en casa y que juega afuera.
 
 $$
 log(\mu_{i, j,t}) = \alpha_{i,t} + \beta_{ j,t} + \gamma_H
@@ -580,7 +580,7 @@ fit_MC_FH <- rstan::sampling(dglm_PL, data = dataPL_E0_stan_MC_FH, chains = 4, i
 
 ```
 
-Se simula los partidos del penultimo día de la temporada:
+Se simula los partidos del penúltimo día de la temporada:
 
 -   Manchester United vs. Arsenal, resultado real 0-1
 
@@ -667,17 +667,17 @@ gt_print
 
 El modelo predice muy optimista los resultados con muchos goles de ambos lados. Es puede tener varios razones:
 
-1.  La manera de estimar las habilidades de defender no es la adequada y salen muy bajos en el modelo. No se considero que la suma de todos las habildiades de defender (y ataquar) debe de ser 0, como se propone en el paper de Alun Owen.
+1.  La manera de estimar las habilidades de defender no es la adecuada y salen muy bajos en el modelo. No se considero que la suma de todos las habilidades de defender (y atacar) debe de ser 0, como se propone en el paper de Alun Owen.
 
-2.  Otra razon puede ser que se toma en cuenta todos los goles de todos los partidos para calcular las habilidades de ataquar y defender. Una posible mejora podria ser implementar un filtro que solo toma en cuenta los resultados de unos ultimos días de juegos, por ejemple 5 días y adicionalmente con un peso mas fuerte a los ultimos.
+2.  Otra razón puede ser que se toma en cuenta todos los goles de todos los partidos para calcular las habilidades de atacar y defender. Una posible mejora podría ser implementar un filtro que solo toma en cuenta los resultados de unos últimos días de juegos, por ejemple 5 días y adicionalmente con un peso mas fuerte a los últimos.
 
-3.  Para las ligas europeas, como la Premier League, hay muchas informaciónes adicionales, como el numer de esquinas, tiros, tiros a la porteria, tiros que toquen la portería, etc. No se tomo en cuenta esa información debido a que la intención es ajustar el modelo a la LigaMX en un futuro. Por lo general, esa información está disponible.
+3.  Para las ligas europeas, como la Premier League, hay muchas informaciones adicionales, como el numero de esquinas, tiros, tiros a la portería, tiros que toquen la portería, etc. No se tomo en cuenta esa información debido a que la intención es ajustar el modelo a la LigaMX en un futuro. Por lo general, esa información está disponible.
 
-4.  Se podria pensar en un factor addicional que refleja si el equipo está competiendo en otra competencia nacional o internacional ya que eso puede afectar al cansacio de los equipos conforme avanza la termporada.
+4.  Se podría pensar en un factor adicional que refleja si el equipo está competiendo en otra competencia nacional o internacional ya que eso puede afectar al cansancio de los equipos conforme avanza la temporada.
 
 # Conclusiones
 
-El modelo dinamico predice los resultados muy optimista para la Premier League. Debido a que no se toma en cuenta varios factores como se menciona en le capitulo de los resultados. Para trabajos futuros se puede pensar a implementar las comentarios mencionados. Adicionalmente será util implementar que el modelo predice para cada día de juego los partidos automatizado. Por el momento hay que definir los partidos manualmente lo que puede llevar a errores a momento de definirlos.
+El modelo dinámico predice los resultados muy optimista para la Premier League. Debido a que no se toma en cuenta varios factores como se menciona en le capitulo de los resultados. Para trabajos futuros se puede pensar a implementar las comentarios mencionados. Adicionalmente será útil implementar que el modelo predice para cada día de juego los partidos automatizado. Por el momento hay que definir los partidos manualmente lo que puede llevar a errores a momento de definirlos.
 
 \newpage
 
